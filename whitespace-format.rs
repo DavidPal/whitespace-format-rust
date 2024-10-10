@@ -83,7 +83,8 @@ enum ChangeType {
     ReplacedWhiteSpaceOnlyFileWithEmptyFile,
     ReplacedTabWithSpaces,
     RemovedTab,
-    NormalizedNonstandardWhitespace,
+    ReplacedNonstandardWhitespaceWithSpace,
+    RemovedNonstandardWhitespace,
 }
 
 impl Display for ChangeType {
@@ -98,7 +99,8 @@ impl Display for ChangeType {
             Self::ReplacedWhiteSpaceOnlyFileWithEmptyFile => "ReplacedWhiteSpaceOnlyFileWithEmptyFile",
             Self::ReplacedTabWithSpaces => "ReplacedTabWithSpaces",
             Self::RemovedTab => "RemovedTab",
-            Self::NormalizedNonstandardWhitespace => "NormalizedNonstandardWhitespace",
+            Self::ReplacedNonstandardWhitespaceWithSpace => "ReplacedNonstandardWhitespaceWithSpace",
+            Self::RemovedNonstandardWhitespace => "RemovedNonstandardWhitespace",
         };
         write!(f, "{:?}", printable)
     }
@@ -109,32 +111,30 @@ struct Change {
     change_type: ChangeType,
 }
 
-fn push_new_line_marker(output: &mut Vec<u8>, new_line_marker: &NewLineMarker) -> usize {
+fn push_new_line_marker(output: &mut Vec<u8>, new_line_marker: &NewLineMarker) {
     match new_line_marker {
         NewLineMarker::Linux => {
             output.push(LINE_FEED);
-            return 1;
         },
         NewLineMarker::MacOs => {
             output.push(CARRIAGE_RETURN);
-            return 1;
         },
         NewLineMarker::Windows => {
             output.push(CARRIAGE_RETURN);
             output.push(LINE_FEED);
-            return 2;
         },
     }
 }
 
 fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
-    // Index into the input data.
+    // Index into the input buffer.
     let mut i: usize = 0;
 
     // The output buffer.
     // The output is expected to be about the same size as the input.
-    // In order to avoid too many reallocations, we reserve
-    // the capacity identical to the size of the input.
+    // If there are no changes, the output will be exactly the same as input.
+    // In order to avoid too many reallocations, reserve the capacity
+    // equal to the size of the input buffer.
     let mut output: Vec<u8> = Vec::with_capacity(input.len());
 
     // List of changes between input and output.
@@ -143,123 +143,134 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
     // Line number. It is incremented every time we encounter a new end of line marker.
     let mut line_number: usize = 1;
 
-    // Length of the last line including in bytes in the output buffer.
-    // The length includes any trailing whitespace.
-    // The length excludes the end of line marker.
-    let mut last_line_length: usize = 0;
+    // Position one byte past the end of last line in the output buffer
+    // excluding the last end of line marker.
+    let mut last_end_of_line_excluding_eol_marker: usize = 0;
 
-    // Number of trailing whitespace characters on the last line in the output buffer
-    // written so far. The number includes spaces, tabs, vertical tab, and form feed characters.
-    // It excludes the end of line marker.
-    let mut number_trailing_whitespaces_on_line: usize = 0;
+    // Position one byte past the end of last line in the output buffer
+    // including the last end of line marker.
+    let mut last_end_of_line_including_eol_marker: usize = 0;
 
-    // Number of trailing empty lines written to the output buffer so far.
-    let mut number_trailing_empty_lines: usize = 0;
+    // Position one byte past the last non-whitespace character in the output buffer.
+    let mut last_non_whitespace: usize = 0;
 
-    // Length of last new line marker in the output buffer expressed in bytes.
-    //   0 if no end of line marker was written yet.
-    //   1 if the last new line marker was a single byte, i.e.,
-    //     either a single LINE_FEED character, or a single CARRIAGE_RETURN character.
-    //   2 if the last new line marker was a pair of bytes CARRIAGE_RETURN + LINE_FEED.
-    let mut last_new_line_marker_length: usize = 0;
+    // Position one byte past the end of last non-empty line in the output buffer
+    // excluding the last end of line marker.
+    let mut last_end_of_non_empty_line_excluding_eol_marker: usize = 0;
+
+    // Position one byte past the end of last non-empty line in the output buffer,
+    // including the last end of line marker.
+    let mut last_end_of_non_empty_line_including_eol_marker: usize = 0;
+
+    // Line number of the last non-empty line.
+    let mut last_non_empty_line_number: usize = 0;
 
     while i < input.len() {
         if input[i] == CARRIAGE_RETURN || input[i] == LINE_FEED {
-            // Parse the new line marker.
-            let mut new_line_marker: NewLineMarker = NewLineMarker::Linux;
-            if input[i] == CARRIAGE_RETURN {
-                if i < input.len() - 1 && input[i + 1] == LINE_FEED {
-                    new_line_marker = NewLineMarker::Windows;
-                    // Windows new line marker consists of two bytes.
-                    // Skip the extra byte.
-                    i += 1;
-                } else {
-                    new_line_marker = NewLineMarker::MacOs;
-                }
-            } else {
+
+            // Parse the new line marker
+            let mut new_line_marker: NewLineMarker;
+            if input[i] == LINE_FEED {
                 new_line_marker = NewLineMarker::Linux;
+            } else if i < input.len() - 1 && input[i + 1] == LINE_FEED {
+                new_line_marker = NewLineMarker::Windows;
+                // Windows new line marker consists of two bytes.
+                // Skip the extra byte.
+                i += 1;
+            } else {
+                new_line_marker = NewLineMarker::MacOs;
             }
 
+            // Remove trailing whitespace
+            if options.remove_trailing_whitespace && last_non_whitespace < output.len() {
+                changes.push(Change{line_number: line_number, change_type: ChangeType::RemovedTrailingWhitespace});
+                output.truncate(last_non_whitespace);
+            }
+
+            // Determine if the last line is empty
+            let is_empty_line: bool = last_end_of_line_including_eol_marker == output.len();
+
+            // Add new line marker
+            last_end_of_line_excluding_eol_marker = output.len();
             if !matches!(&options.new_line_marker, new_line_marker) {
                 changes.push(Change{line_number: line_number, change_type: ChangeType::ReplacedNewLineMarker});
             }
-            if options.remove_trailing_whitespace && number_trailing_whitespaces_on_line > 0 {
-                last_line_length -= number_trailing_whitespaces_on_line;
-                changes.push(Change{line_number: line_number, change_type: ChangeType::RemovedTrailingWhitespace});
-                output.truncate(output.len() - number_trailing_whitespaces_on_line);
+            push_new_line_marker(&mut output, &options.new_line_marker);
+            last_end_of_line_including_eol_marker = output.len();
+
+            // Update position of last non-empty line.
+            if !is_empty_line {
+                last_end_of_non_empty_line_excluding_eol_marker = last_end_of_line_excluding_eol_marker;
+                last_end_of_non_empty_line_including_eol_marker = last_end_of_line_including_eol_marker;
+                last_non_empty_line_number = line_number;
             }
-
-            // End the current line
-            last_new_line_marker_length = push_new_line_marker(&mut output, &options.new_line_marker);
-
-            // Start a new line
             line_number += 1;
-            if last_line_length == 0 {
-                number_trailing_empty_lines += 1;
-            } else {
-                number_trailing_empty_lines = 0;
-            }
-            last_line_length = 0;
-            number_trailing_whitespaces_on_line = 0;
         } else if input[i] == SPACE {
             output.push(input[i]);
-            last_line_length += 1;
-            number_trailing_whitespaces_on_line += 1;
         } else if input[i] == TAB {
             if options.replace_tabs_with_spaces < 0 {
                 output.push(input[i]);
-                last_line_length += 1;
-                number_trailing_whitespaces_on_line += 1;
             } else if options.replace_tabs_with_spaces > 0 {
-                last_line_length += options.replace_tabs_with_spaces as usize;
-                number_trailing_empty_lines += options.replace_tabs_with_spaces as usize;
                 changes.push(Change{ line_number: line_number, change_type: ChangeType::ReplacedTabWithSpaces });
                 for _ in 0..options.replace_tabs_with_spaces {
                     output.push(SPACE);
                 }
             } else {
-                changes.push(Change{ line_number: line_number, change_type: ChangeType::ReplacedTabWithSpaces });
+                // Remove the tab character.
+                changes.push(Change{ line_number: line_number, change_type: ChangeType::RemovedTab });
             }
         } else if input[i] == VERTICAL_TAB || input[i] == FORM_FEED {
             match options.normalize_non_standard_whitespace {
                 NonStandardWhitespaceReplacementMode::Ignore => {
                     output.push(input[i]);
-                    last_line_length += 1;
-                    number_trailing_whitespaces_on_line += 1;
                 },
                 NonStandardWhitespaceReplacementMode::ReplaceWithSpace => {
                     output.push(SPACE);
-                    last_line_length += 1;
-                    number_trailing_whitespaces_on_line += 1;
+                    changes.push(Change{line_number: line_number, change_type: ChangeType::ReplacedNonstandardWhitespaceWithSpace});
                 },
                 NonStandardWhitespaceReplacementMode::Remove => {
-                    // Do nothing
+                    // Remove the non-standard whitespace character.
+                    changes.push(Change{line_number: line_number, change_type: ChangeType::RemovedNonstandardWhitespace});
                 },
             }
         } else {
             output.push(input[i]);
-            last_line_length += 1;
-            number_trailing_whitespaces_on_line = 0;
+            last_non_whitespace = output.len();
         }
 
         // Move to the next byte
         i += 1;
     }
 
-    if options.remove_trailing_whitespace && number_trailing_whitespaces_on_line > 0 {
-        last_line_length -= number_trailing_whitespaces_on_line;
-        changes.push(Change{ line_number: line_number, change_type: ChangeType::RemovedTrailingWhitespace});
-        output.truncate(output.len() - number_trailing_whitespaces_on_line);
+    // Remove trailing whitespace from the last line.
+    if options.remove_trailing_whitespace && last_end_of_line_including_eol_marker < output.len() && last_non_whitespace < output.len() {
+        changes.push(Change{line_number: line_number, change_type: ChangeType::RemovedTrailingWhitespace});
+        output.truncate(last_non_whitespace);
     }
 
-    if options.add_new_line_marker_at_end_of_file && last_line_length > 0 {
+    // Remove trailing empty lines.
+    if options.remove_trailing_empty_lines && last_end_of_line_including_eol_marker == output.len() && last_end_of_non_empty_line_including_eol_marker < output.len() {
+        line_number = last_non_empty_line_number + 1;
+        last_end_of_line_excluding_eol_marker = last_end_of_non_empty_line_excluding_eol_marker;
+        last_end_of_line_including_eol_marker = last_end_of_non_empty_line_including_eol_marker;
+        changes.push(Change{ line_number: line_number, change_type: ChangeType::RemovedEmptyLines});
+        output.truncate(last_end_of_non_empty_line_including_eol_marker);
+    }
+
+    // Add new line marker at the end of the file
+    if options.add_new_line_marker_at_end_of_file && last_end_of_line_including_eol_marker < output.len() {
+        last_end_of_line_excluding_eol_marker = output.len();
         changes.push(Change{ line_number: line_number, change_type: ChangeType::NewLineMarkerAddedToEndOfFile});
         push_new_line_marker(&mut output, &options.new_line_marker);
+        last_end_of_line_including_eol_marker = output.len();
+        line_number += 1;
     }
 
-    if options.remove_new_line_marker_from_end_of_file && line_number >= 2 && last_line_length == 0 {
-        changes.push(Change{ line_number: line_number - 1, change_type: ChangeType::NewLineMarkerRemovedFromEndOfFile});
-        output.truncate(output.len() - last_new_line_marker_length);
+    // Remove new line marker from the end of the file
+    if options.remove_new_line_marker_from_end_of_file && last_end_of_line_including_eol_marker == output.len() && line_number >= 2 {
+        line_number -= 1;
+        changes.push(Change{ line_number: line_number, change_type: ChangeType::NewLineMarkerRemovedFromEndOfFile});
+        output.truncate(last_end_of_line_excluding_eol_marker);
     }
 
     return (output, changes);
