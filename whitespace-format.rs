@@ -10,7 +10,7 @@
 use std::env;
 use std::fs;
 use std::cmp;
-use std::fmt::{self, Display, Formatter};
+use std::fmt;
 
 const FILE_NAME: &str = "README.md";
 
@@ -21,7 +21,7 @@ const CARRIAGE_RETURN: u8 = b'\r';
 const LINE_FEED: u8 = b'\n';
 const SPACE: u8 = b' ';
 const TAB: u8 = b'\t';
-const VERTICAL_TAB: u8 = b'\n'; // The same as '\v' in C, C++, Java and Python.
+const VERTICAL_TAB: u8 = 0x0B; // The same as '\v' in C, C++, Java and Python.
 const FORM_FEED: u8 = 0x0C;  // The same as '\f' in C, C++, Java and Python.
 
 // Possible line ending.
@@ -49,8 +49,8 @@ enum EmptyFileReplacementMode {
     OneLine,
 }
 
-impl Display for NewLineMarker {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl fmt::Display for NewLineMarker {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let printable = match *self {
             Self::Linux => "Linux",
             Self::MacOs => "MacOS",
@@ -87,8 +87,8 @@ enum ChangeType {
     RemovedNonstandardWhitespace,
 }
 
-impl Display for ChangeType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl fmt::Display for ChangeType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let printable = match *self {
             Self::NewLineMarkerAddedToEndOfFile => "NewLineMarkerAddedToEndOfFile",
             Self::NewLineMarkerRemovedFromEndOfFile => "NewLineMarkerRemovedFromEndOfFile",
