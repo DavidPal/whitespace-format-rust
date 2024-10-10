@@ -81,7 +81,8 @@ enum ChangeType {
     RemovedEmptyLines,
     ReplacedEmptyFileWithOneLine,
     ReplacedWhiteSpaceOnlyFileWithEmptyFile,
-    ReplacedTabsWithSpaces,
+    ReplacedTabWithSpaces,
+    RemovedTab,
     NormalizedNonstandardWhitespace,
 }
 
@@ -95,7 +96,8 @@ impl Display for ChangeType {
             Self::RemovedEmptyLines => "RemovedEmptyLines",
             Self::ReplacedEmptyFileWithOneLine => "ReplacedEmptyFileWithOneLine",
             Self::ReplacedWhiteSpaceOnlyFileWithEmptyFile => "ReplacedWhiteSpaceOnlyFileWithEmptyFile",
-            Self::ReplacedTabsWithSpaces => "ReplacedTabsWithSpaces",
+            Self::ReplacedTabWithSpaces => "ReplacedTabWithSpaces",
+            Self::RemovedTab => "RemovedTab",
             Self::NormalizedNonstandardWhitespace => "NormalizedNonstandardWhitespace",
         };
         write!(f, "{:?}", printable)
@@ -107,47 +109,75 @@ struct Change {
     change_type: ChangeType,
 }
 
-fn push_new_line_marker(output: &mut Vec<u8>, new_line_marker: &NewLineMarker) {
+fn push_new_line_marker(output: &mut Vec<u8>, new_line_marker: &NewLineMarker) -> usize {
     match new_line_marker {
         NewLineMarker::Linux => {
             output.push(LINE_FEED);
+            return 1;
         },
         NewLineMarker::MacOs => {
             output.push(CARRIAGE_RETURN);
+            return 1;
         },
         NewLineMarker::Windows => {
             output.push(CARRIAGE_RETURN);
             output.push(LINE_FEED);
+            return 2;
         },
     }
 }
 
-fn process_file(data: &[u8], options: &Options, output: &mut Vec<u8>, changes: &mut Vec<Change>) {
-    let mut line_number: usize = 1;
+fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
+    // Index into the input data.
     let mut i: usize = 0;
-    let mut number_trailing_whitespaces_on_line: usize = 0;
-    let mut number_trailing_empty_lines: usize = 0;
+
+    // The output buffer.
+    // The output is expected to be about the same size as the input.
+    // In order to avoid too many reallocations, we reserve
+    // the capacity identical to the size of the input.
+    let mut output: Vec<u8> = Vec::with_capacity(input.len());
+
+    // List of changes between input and output.
+    let mut changes: Vec<Change> = Vec::new();
+
+    // Line number. It is incremented every time we encounter a new end of line marker.
+    let mut line_number: usize = 1;
+
+    // Length of the last line including in bytes in the output buffer.
+    // The length includes any trailing whitespace.
+    // The length excludes the end of line marker.
     let mut last_line_length: usize = 0;
+
+    // Number of trailing whitespace characters on the last line in the output buffer
+    // written so far. The number includes spaces, tabs, vertical tab, and form feed characters.
+    // It excludes the end of line marker.
+    let mut number_trailing_whitespaces_on_line: usize = 0;
+
+    // Number of trailing empty lines written to the output buffer so far.
+    let mut number_trailing_empty_lines: usize = 0;
+
+    // Length of last new line marker in the output buffer expressed in bytes.
+    //   0 if no end of line marker was written yet.
+    //   1 if the last new line marker was a single byte, i.e.,
+    //     either a single LINE_FEED character, or a single CARRIAGE_RETURN character.
+    //   2 if the last new line marker was a pair of bytes CARRIAGE_RETURN + LINE_FEED.
     let mut last_new_line_marker_length: usize = 0;
 
-    while i < data.len() {
-        if data[i] == CARRIAGE_RETURN || data[i] == LINE_FEED {
+    while i < input.len() {
+        if input[i] == CARRIAGE_RETURN || input[i] == LINE_FEED {
             // Parse the new line marker.
             let mut new_line_marker: NewLineMarker = NewLineMarker::Linux;
-            if data[i] == CARRIAGE_RETURN {
-                if i < data.len() - 1 && data[i + 1] == LINE_FEED {
+            if input[i] == CARRIAGE_RETURN {
+                if i < input.len() - 1 && input[i + 1] == LINE_FEED {
                     new_line_marker = NewLineMarker::Windows;
-                    last_new_line_marker_length = 2;
                     // Windows new line marker consists of two bytes.
                     // Skip the extra byte.
                     i += 1;
                 } else {
                     new_line_marker = NewLineMarker::MacOs;
-                    last_new_line_marker_length = 1;
                 }
             } else {
                 new_line_marker = NewLineMarker::Linux;
-                last_new_line_marker_length = 1;
             }
 
             if !matches!(&options.new_line_marker, new_line_marker) {
@@ -160,7 +190,7 @@ fn process_file(data: &[u8], options: &Options, output: &mut Vec<u8>, changes: &
             }
 
             // End the current line
-            push_new_line_marker(output, &options.new_line_marker);
+            last_new_line_marker_length = push_new_line_marker(&mut output, &options.new_line_marker);
 
             // Start a new line
             line_number += 1;
@@ -171,26 +201,29 @@ fn process_file(data: &[u8], options: &Options, output: &mut Vec<u8>, changes: &
             }
             last_line_length = 0;
             number_trailing_whitespaces_on_line = 0;
-        } else if data[i] == SPACE {
-            output.push(data[i]);
+        } else if input[i] == SPACE {
+            output.push(input[i]);
             last_line_length += 1;
             number_trailing_whitespaces_on_line += 1;
-        } else if data[i] == TAB {
+        } else if input[i] == TAB {
             if options.replace_tabs_with_spaces < 0 {
-                output.push(data[i]);
+                output.push(input[i]);
                 last_line_length += 1;
                 number_trailing_whitespaces_on_line += 1;
             } else if options.replace_tabs_with_spaces > 0 {
                 last_line_length += options.replace_tabs_with_spaces as usize;
                 number_trailing_empty_lines += options.replace_tabs_with_spaces as usize;
+                changes.push(Change{ line_number: line_number, change_type: ChangeType::ReplacedTabWithSpaces });
                 for _ in 0..options.replace_tabs_with_spaces {
                     output.push(SPACE);
                 }
+            } else {
+                changes.push(Change{ line_number: line_number, change_type: ChangeType::ReplacedTabWithSpaces });
             }
-        } else if data[i] == VERTICAL_TAB || data[i] == FORM_FEED {
+        } else if input[i] == VERTICAL_TAB || input[i] == FORM_FEED {
             match options.normalize_non_standard_whitespace {
                 NonStandardWhitespaceReplacementMode::Ignore => {
-                    output.push(data[i]);
+                    output.push(input[i]);
                     last_line_length += 1;
                     number_trailing_whitespaces_on_line += 1;
                 },
@@ -204,7 +237,7 @@ fn process_file(data: &[u8], options: &Options, output: &mut Vec<u8>, changes: &
                 },
             }
         } else {
-            output.push(data[i]);
+            output.push(input[i]);
             last_line_length += 1;
             number_trailing_whitespaces_on_line = 0;
         }
@@ -221,13 +254,15 @@ fn process_file(data: &[u8], options: &Options, output: &mut Vec<u8>, changes: &
 
     if options.add_new_line_marker_at_end_of_file && last_line_length > 0 {
         changes.push(Change{ line_number: line_number, change_type: ChangeType::NewLineMarkerAddedToEndOfFile});
-        push_new_line_marker(output, &options.new_line_marker);
+        push_new_line_marker(&mut output, &options.new_line_marker);
     }
 
     if options.remove_new_line_marker_from_end_of_file && line_number >= 2 && last_line_length == 0 {
         changes.push(Change{ line_number: line_number - 1, change_type: ChangeType::NewLineMarkerRemovedFromEndOfFile});
         output.truncate(output.len() - last_new_line_marker_length);
     }
+
+    return (output, changes);
 }
 
 /// Computes the most common new line marker based on content of the file.
@@ -288,9 +323,8 @@ fn main() {
         replace_tabs_with_spaces: -1,
         normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
     };
-    let mut output: Vec<u8> = Vec::new();
-    let mut changes: Vec<Change> = Vec::new();
-    process_file(&data, &options, &mut output, &mut changes);
+    let (output, changes): (Vec<u8>, Vec<Change>) = process_file(&data, &options);
+
     println!("Number of changes {}", changes.len());
     for change in changes {
         println!("Line {}: {}", change.line_number, change.change_type);
