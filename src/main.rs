@@ -9,7 +9,6 @@
 
 use std::env;
 use std::fs;
-use std::cmp;
 use std::fmt;
 
 const FILE_NAME: &str = "README.md";
@@ -209,10 +208,12 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
 
             // Add new line marker
             last_end_of_line_excluding_eol_marker = output.len();
-            if output_new_line_marker != new_line_marker {
-                changes.push(Change{line_number: line_number, change_type: ChangeType::ReplacedNewLineMarker});
+            if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
+                changes.push(Change { line_number: line_number, change_type: ChangeType::ReplacedNewLineMarker });
+                push_new_line_marker(&mut output, &output_new_line_marker);
+            } else {
+                push_new_line_marker(&mut output, &new_line_marker);
             }
-            push_new_line_marker(&mut output, &output_new_line_marker);
             last_end_of_line_including_eol_marker = output.len();
 
             // Update position of last non-empty line.
@@ -370,10 +371,44 @@ mod tests {
         assert_eq!(find_most_common_new_line_marker(&[LINE_FEED]), NewLineMarker::Linux);
         assert_eq!(find_most_common_new_line_marker(&[CARRIAGE_RETURN]), NewLineMarker::MacOs);
         assert_eq!(find_most_common_new_line_marker(&[CARRIAGE_RETURN, LINE_FEED]), NewLineMarker::Windows);
-        assert_eq!(find_most_common_new_line_marker("hello world".as_bytes()), NewLineMarker::Linux);
-        assert_eq!(find_most_common_new_line_marker(&"a\rb\nc\n".as_bytes()), NewLineMarker::Linux);
-        assert_eq!(find_most_common_new_line_marker(&"a\rb\rc\r\n".as_bytes()), NewLineMarker::MacOs);
-        assert_eq!(find_most_common_new_line_marker(&"a\r\nb\r\nc\n".as_bytes()), NewLineMarker::Windows);
+        assert_eq!(find_most_common_new_line_marker(b"hello world"), NewLineMarker::Linux);
+        assert_eq!(find_most_common_new_line_marker(b"a\rb\nc\n"), NewLineMarker::Linux);
+        assert_eq!(find_most_common_new_line_marker(b"a\rb\rc\r\n"), NewLineMarker::MacOs);
+        assert_eq!(find_most_common_new_line_marker(b"a\r\nb\r\nc\n"), NewLineMarker::Windows);
+    }
+
+    #[test]
+    fn test_process_file() {
+        let options: Options = Options {
+            add_new_line_marker_at_end_of_file: true,
+            remove_new_line_marker_from_end_of_file: false,
+            normalize_new_line_markers: true,
+            remove_trailing_whitespace: true,
+            remove_trailing_empty_lines: true,
+            new_line_marker: NewLineMarkerMode::Linux,
+            normalize_empty_files: EmptyFileReplacementMode::Empty,
+            normalize_whitespace_only_files: EmptyFileReplacementMode::Empty,
+            replace_tabs_with_spaces: -1,
+            normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
+        };
+        assert_eq!(process_file(b"hello world", &options).0, b"hello world\n");
+    }
+
+    #[test]
+    fn test_process_file_2() {
+        let options: Options = Options {
+            add_new_line_marker_at_end_of_file: true,
+            remove_new_line_marker_from_end_of_file: false,
+            normalize_new_line_markers: false,
+            remove_trailing_whitespace: true,
+            remove_trailing_empty_lines: true,
+            new_line_marker: NewLineMarkerMode::Linux,
+            normalize_empty_files: EmptyFileReplacementMode::Empty,
+            normalize_whitespace_only_files: EmptyFileReplacementMode::Empty,
+            replace_tabs_with_spaces: -1,
+            normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
+        };
+        assert_eq!(process_file(b"hello world\r\n", &options).0, b"hello world\r\n");
     }
 
 }
