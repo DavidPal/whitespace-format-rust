@@ -25,6 +25,7 @@ const VERTICAL_TAB: u8 = 0x0B; // The same as '\v' in C, C++, Java and Python.
 const FORM_FEED: u8 = 0x0C;  // The same as '\f' in C, C++, Java and Python.
 
 // Possible line ending.
+#[derive(PartialEq, Debug)]
 enum NewLineMarker {
     // Linux line ending is a single line feed character '\n'.
     Linux,
@@ -34,6 +35,14 @@ enum NewLineMarker {
 
     // Windows/DOS line ending is a sequence of two characters:
     // carriage return character followed by line feed character.
+    Windows,
+}
+
+#[derive(PartialEq)]
+enum NewLineMarkerMode {
+    Auto,
+    Linux,
+    MacOs,
     Windows,
 }
 
@@ -66,7 +75,7 @@ struct Options {
     normalize_new_line_markers: bool,
     remove_trailing_whitespace: bool,
     remove_trailing_empty_lines: bool,
-    new_line_marker: NewLineMarker,
+    new_line_marker: NewLineMarkerMode,
     normalize_empty_files: EmptyFileReplacementMode,
     normalize_whitespace_only_files: EmptyFileReplacementMode,
     replace_tabs_with_spaces: isize,
@@ -111,8 +120,8 @@ struct Change {
     change_type: ChangeType,
 }
 
-fn push_new_line_marker(output: &mut Vec<u8>, new_line_marker: &NewLineMarker) {
-    match new_line_marker {
+fn push_new_line_marker(output: &mut Vec<u8>, output_new_line_marker: &NewLineMarker) {
+    match output_new_line_marker {
         NewLineMarker::Linux => {
             output.push(LINE_FEED);
         },
@@ -127,6 +136,14 @@ fn push_new_line_marker(output: &mut Vec<u8>, new_line_marker: &NewLineMarker) {
 }
 
 fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
+    // Figure out what new line marker to write to the output buffer.
+    let output_new_line_marker = match options.new_line_marker {
+        NewLineMarkerMode::Auto => find_most_common_new_line_marker(input),
+        NewLineMarkerMode::Linux => NewLineMarker::Linux,
+        NewLineMarkerMode::MacOs => NewLineMarker::MacOs,
+        NewLineMarkerMode::Windows => NewLineMarker::Windows,
+    };
+
     // Index into the input buffer.
     let mut i: usize = 0;
 
@@ -192,10 +209,10 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
 
             // Add new line marker
             last_end_of_line_excluding_eol_marker = output.len();
-            if !matches!(&options.new_line_marker, new_line_marker) {
+            if output_new_line_marker != new_line_marker {
                 changes.push(Change{line_number: line_number, change_type: ChangeType::ReplacedNewLineMarker});
             }
-            push_new_line_marker(&mut output, &options.new_line_marker);
+            push_new_line_marker(&mut output, &output_new_line_marker);
             last_end_of_line_including_eol_marker = output.len();
 
             // Update position of last non-empty line.
@@ -261,7 +278,7 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
     if options.add_new_line_marker_at_end_of_file && last_end_of_line_including_eol_marker < output.len() {
         last_end_of_line_excluding_eol_marker = output.len();
         changes.push(Change{ line_number: line_number, change_type: ChangeType::NewLineMarkerAddedToEndOfFile});
-        push_new_line_marker(&mut output, &options.new_line_marker);
+        push_new_line_marker(&mut output, &output_new_line_marker);
         last_end_of_line_including_eol_marker = output.len();
         line_number += 1;
     }
@@ -279,21 +296,21 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
 /// Computes the most common new line marker based on content of the file.
 /// If there are ties, prefer Linux to MacOS to Windows.
 /// If there are no new line markers, return Linux.
-fn find_most_common_new_line_marker(data: &[u8]) -> NewLineMarker {
+fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
     let mut linux_count: usize = 0;
     let mut macos_count: usize = 0;
     let mut windows_count: usize = 0;
     let mut i: usize = 0;
 
-    while i < data.len() {
-        if data[i] == CARRIAGE_RETURN {
-            if i < data.len() - 1 && data[i + 1] == LINE_FEED {
+    while i < input.len() {
+        if input[i] == CARRIAGE_RETURN {
+            if i < input.len() - 1 && input[i + 1] == LINE_FEED {
                 windows_count += 1;
                 i += 1;
             } else {
                 macos_count += 1;
             }
-        } else if data[i] == LINE_FEED {
+        } else if input[i] == LINE_FEED {
             linux_count += 1;
         }
         i += 1;
@@ -328,7 +345,7 @@ fn main() {
         normalize_new_line_markers: true,
         remove_trailing_whitespace: true,
         remove_trailing_empty_lines: true,
-        new_line_marker: NewLineMarker::Linux,
+        new_line_marker: NewLineMarkerMode::Linux,
         normalize_empty_files: EmptyFileReplacementMode::Empty,
         normalize_whitespace_only_files: EmptyFileReplacementMode::Empty,
         replace_tabs_with_spaces: -1,
@@ -340,4 +357,23 @@ fn main() {
     for change in changes {
         println!("Line {}: {}", change.line_number, change.change_type);
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_most_common_new_line_marker() {
+        assert_eq!(find_most_common_new_line_marker(&[]), NewLineMarker::Linux);
+        assert_eq!(find_most_common_new_line_marker(&[LINE_FEED]), NewLineMarker::Linux);
+        assert_eq!(find_most_common_new_line_marker(&[CARRIAGE_RETURN]), NewLineMarker::MacOs);
+        assert_eq!(find_most_common_new_line_marker(&[CARRIAGE_RETURN, LINE_FEED]), NewLineMarker::Windows);
+        assert_eq!(find_most_common_new_line_marker("hello world".as_bytes()), NewLineMarker::Linux);
+        assert_eq!(find_most_common_new_line_marker(&"a\rb\nc\n".as_bytes()), NewLineMarker::Linux);
+        assert_eq!(find_most_common_new_line_marker(&"a\rb\rc\r\n".as_bytes()), NewLineMarker::MacOs);
+        assert_eq!(find_most_common_new_line_marker(&"a\r\nb\r\nc\n".as_bytes()), NewLineMarker::Windows);
+    }
+
 }
