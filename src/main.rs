@@ -8,8 +8,8 @@
 //  6. Ensure that empty files have zero bytes.
 
 use std::env;
-use std::fs;
 use std::fmt;
+use std::fs;
 
 const FILE_NAME: &str = "README.md";
 
@@ -21,7 +21,7 @@ const LINE_FEED: u8 = b'\n';
 const SPACE: u8 = b' ';
 const TAB: u8 = b'\t';
 const VERTICAL_TAB: u8 = 0x0B; // The same as '\v' in C, C++, Java and Python.
-const FORM_FEED: u8 = 0x0C;  // The same as '\f' in C, C++, Java and Python.
+const FORM_FEED: u8 = 0x0C; // The same as '\f' in C, C++, Java and Python.
 
 // Possible line ending.
 #[derive(PartialEq, Debug)]
@@ -104,10 +104,14 @@ impl fmt::Display for ChangeType {
             Self::RemovedTrailingWhitespace => "RemovedTrailingWhitespace",
             Self::RemovedEmptyLines => "RemovedEmptyLines",
             Self::ReplacedEmptyFileWithOneLine => "ReplacedEmptyFileWithOneLine",
-            Self::ReplacedWhiteSpaceOnlyFileWithEmptyFile => "ReplacedWhiteSpaceOnlyFileWithEmptyFile",
+            Self::ReplacedWhiteSpaceOnlyFileWithEmptyFile => {
+                "ReplacedWhiteSpaceOnlyFileWithEmptyFile"
+            }
             Self::ReplacedTabWithSpaces => "ReplacedTabWithSpaces",
             Self::RemovedTab => "RemovedTab",
-            Self::ReplacedNonstandardWhitespaceWithSpace => "ReplacedNonstandardWhitespaceWithSpace",
+            Self::ReplacedNonstandardWhitespaceWithSpace => {
+                "ReplacedNonstandardWhitespaceWithSpace"
+            }
             Self::RemovedNonstandardWhitespace => "RemovedNonstandardWhitespace",
         };
         write!(f, "{:?}", printable)
@@ -123,14 +127,14 @@ fn push_new_line_marker(output: &mut Vec<u8>, output_new_line_marker: &NewLineMa
     match output_new_line_marker {
         NewLineMarker::Linux => {
             output.push(LINE_FEED);
-        },
+        }
         NewLineMarker::MacOs => {
             output.push(CARRIAGE_RETURN);
-        },
+        }
         NewLineMarker::Windows => {
             output.push(CARRIAGE_RETURN);
             output.push(LINE_FEED);
-        },
+        }
     }
 }
 
@@ -183,7 +187,6 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
 
     while i < input.len() {
         if input[i] == CARRIAGE_RETURN || input[i] == LINE_FEED {
-
             // Parse the new line marker
             let mut new_line_marker: NewLineMarker;
             if input[i] == LINE_FEED {
@@ -199,7 +202,10 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
 
             // Remove trailing whitespace
             if options.remove_trailing_whitespace && last_non_whitespace < output.len() {
-                changes.push(Change{line_number: line_number, change_type: ChangeType::RemovedTrailingWhitespace});
+                changes.push(Change {
+                    line_number: line_number,
+                    change_type: ChangeType::RemovedTrailingWhitespace,
+                });
                 output.truncate(last_non_whitespace);
             }
 
@@ -209,7 +215,10 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
             // Add new line marker
             last_end_of_line_excluding_eol_marker = output.len();
             if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
-                changes.push(Change { line_number: line_number, change_type: ChangeType::ReplacedNewLineMarker });
+                changes.push(Change {
+                    line_number: line_number,
+                    change_type: ChangeType::ReplacedNewLineMarker,
+                });
                 push_new_line_marker(&mut output, &output_new_line_marker);
             } else {
                 push_new_line_marker(&mut output, &new_line_marker);
@@ -218,8 +227,10 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
 
             // Update position of last non-empty line.
             if !is_empty_line {
-                last_end_of_non_empty_line_excluding_eol_marker = last_end_of_line_excluding_eol_marker;
-                last_end_of_non_empty_line_including_eol_marker = last_end_of_line_including_eol_marker;
+                last_end_of_non_empty_line_excluding_eol_marker =
+                    last_end_of_line_excluding_eol_marker;
+                last_end_of_non_empty_line_including_eol_marker =
+                    last_end_of_line_including_eol_marker;
                 last_non_empty_line_number = line_number;
             }
             line_number += 1;
@@ -229,27 +240,39 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
             if options.replace_tabs_with_spaces < 0 {
                 output.push(input[i]);
             } else if options.replace_tabs_with_spaces > 0 {
-                changes.push(Change{ line_number: line_number, change_type: ChangeType::ReplacedTabWithSpaces });
+                changes.push(Change {
+                    line_number: line_number,
+                    change_type: ChangeType::ReplacedTabWithSpaces,
+                });
                 for _ in 0..options.replace_tabs_with_spaces {
                     output.push(SPACE);
                 }
             } else {
                 // Remove the tab character.
-                changes.push(Change{ line_number: line_number, change_type: ChangeType::RemovedTab });
+                changes.push(Change {
+                    line_number: line_number,
+                    change_type: ChangeType::RemovedTab,
+                });
             }
         } else if input[i] == VERTICAL_TAB || input[i] == FORM_FEED {
             match options.normalize_non_standard_whitespace {
                 NonStandardWhitespaceReplacementMode::Ignore => {
                     output.push(input[i]);
-                },
+                }
                 NonStandardWhitespaceReplacementMode::ReplaceWithSpace => {
                     output.push(SPACE);
-                    changes.push(Change{line_number: line_number, change_type: ChangeType::ReplacedNonstandardWhitespaceWithSpace});
-                },
+                    changes.push(Change {
+                        line_number: line_number,
+                        change_type: ChangeType::ReplacedNonstandardWhitespaceWithSpace,
+                    });
+                }
                 NonStandardWhitespaceReplacementMode::Remove => {
                     // Remove the non-standard whitespace character.
-                    changes.push(Change{line_number: line_number, change_type: ChangeType::RemovedNonstandardWhitespace});
-                },
+                    changes.push(Change {
+                        line_number: line_number,
+                        change_type: ChangeType::RemovedNonstandardWhitespace,
+                    });
+                }
             }
         } else {
             output.push(input[i]);
@@ -261,33 +284,56 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
     }
 
     // Remove trailing whitespace from the last line.
-    if options.remove_trailing_whitespace && last_end_of_line_including_eol_marker < output.len() && last_non_whitespace < output.len() {
-        changes.push(Change{line_number: line_number, change_type: ChangeType::RemovedTrailingWhitespace});
+    if options.remove_trailing_whitespace
+        && last_end_of_line_including_eol_marker < output.len()
+        && last_non_whitespace < output.len()
+    {
+        changes.push(Change {
+            line_number: line_number,
+            change_type: ChangeType::RemovedTrailingWhitespace,
+        });
         output.truncate(last_non_whitespace);
     }
 
     // Remove trailing empty lines.
-    if options.remove_trailing_empty_lines && last_end_of_line_including_eol_marker == output.len() && last_end_of_non_empty_line_including_eol_marker < output.len() {
+    if options.remove_trailing_empty_lines
+        && last_end_of_line_including_eol_marker == output.len()
+        && last_end_of_non_empty_line_including_eol_marker < output.len()
+    {
         line_number = last_non_empty_line_number + 1;
         last_end_of_line_excluding_eol_marker = last_end_of_non_empty_line_excluding_eol_marker;
         last_end_of_line_including_eol_marker = last_end_of_non_empty_line_including_eol_marker;
-        changes.push(Change{ line_number: line_number, change_type: ChangeType::RemovedEmptyLines});
+        changes.push(Change {
+            line_number: line_number,
+            change_type: ChangeType::RemovedEmptyLines,
+        });
         output.truncate(last_end_of_non_empty_line_including_eol_marker);
     }
 
     // Add new line marker at the end of the file
-    if options.add_new_line_marker_at_end_of_file && last_end_of_line_including_eol_marker < output.len() {
+    if options.add_new_line_marker_at_end_of_file
+        && last_end_of_line_including_eol_marker < output.len()
+    {
         last_end_of_line_excluding_eol_marker = output.len();
-        changes.push(Change{ line_number: line_number, change_type: ChangeType::NewLineMarkerAddedToEndOfFile});
+        changes.push(Change {
+            line_number: line_number,
+            change_type: ChangeType::NewLineMarkerAddedToEndOfFile,
+        });
         push_new_line_marker(&mut output, &output_new_line_marker);
         last_end_of_line_including_eol_marker = output.len();
         line_number += 1;
     }
 
     // Remove new line marker from the end of the file
-    if options.remove_new_line_marker_from_end_of_file && last_end_of_line_including_eol_marker == output.len() && line_number >= 2 {
+    if options.remove_new_line_marker_from_end_of_file
+        && last_end_of_line_including_eol_marker == output.len()
+        && line_number >= 2
+    {
         line_number -= 1;
-        changes.push(Change{ line_number: line_number, change_type: ChangeType::NewLineMarkerRemovedFromEndOfFile});
+        changes.push(Change {
+            line_number: line_number,
+            change_type: ChangeType::NewLineMarkerRemovedFromEndOfFile,
+        });
         output.truncate(last_end_of_line_excluding_eol_marker);
     }
 
@@ -360,7 +406,6 @@ fn main() {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -368,13 +413,34 @@ mod tests {
     #[test]
     fn test_find_most_common_new_line_marker() {
         assert_eq!(find_most_common_new_line_marker(&[]), NewLineMarker::Linux);
-        assert_eq!(find_most_common_new_line_marker(&[LINE_FEED]), NewLineMarker::Linux);
-        assert_eq!(find_most_common_new_line_marker(&[CARRIAGE_RETURN]), NewLineMarker::MacOs);
-        assert_eq!(find_most_common_new_line_marker(&[CARRIAGE_RETURN, LINE_FEED]), NewLineMarker::Windows);
-        assert_eq!(find_most_common_new_line_marker(b"hello world"), NewLineMarker::Linux);
-        assert_eq!(find_most_common_new_line_marker(b"a\rb\nc\n"), NewLineMarker::Linux);
-        assert_eq!(find_most_common_new_line_marker(b"a\rb\rc\r\n"), NewLineMarker::MacOs);
-        assert_eq!(find_most_common_new_line_marker(b"a\r\nb\r\nc\n"), NewLineMarker::Windows);
+        assert_eq!(
+            find_most_common_new_line_marker(&[LINE_FEED]),
+            NewLineMarker::Linux
+        );
+        assert_eq!(
+            find_most_common_new_line_marker(&[CARRIAGE_RETURN]),
+            NewLineMarker::MacOs
+        );
+        assert_eq!(
+            find_most_common_new_line_marker(&[CARRIAGE_RETURN, LINE_FEED]),
+            NewLineMarker::Windows
+        );
+        assert_eq!(
+            find_most_common_new_line_marker(b"hello world"),
+            NewLineMarker::Linux
+        );
+        assert_eq!(
+            find_most_common_new_line_marker(b"a\rb\nc\n"),
+            NewLineMarker::Linux
+        );
+        assert_eq!(
+            find_most_common_new_line_marker(b"a\rb\rc\r\n"),
+            NewLineMarker::MacOs
+        );
+        assert_eq!(
+            find_most_common_new_line_marker(b"a\r\nb\r\nc\n"),
+            NewLineMarker::Windows
+        );
     }
 
     #[test]
@@ -408,7 +474,9 @@ mod tests {
             replace_tabs_with_spaces: -1,
             normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
         };
-        assert_eq!(process_file(b"hello world\r\n", &options).0, b"hello world\r\n");
+        assert_eq!(
+            process_file(b"hello world\r\n", &options).0,
+            b"hello world\r\n"
+        );
     }
-
 }
