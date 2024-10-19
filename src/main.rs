@@ -23,7 +23,7 @@ const TAB: u8 = b'\t';
 const VERTICAL_TAB: u8 = 0x0B; // The same as '\v' in C, C++, Java and Python.
 const FORM_FEED: u8 = 0x0C; // The same as '\f' in C, C++, Java and Python.
 
-// Possible line ending.
+/// A possible line ending.
 #[derive(PartialEq, Debug)]
 enum NewLineMarker {
     // Linux line ending is a single line feed character '\n'.
@@ -37,35 +37,27 @@ enum NewLineMarker {
     Windows,
 }
 
-#[derive(PartialEq)]
-enum NewLineMarkerMode {
+// New line marker that should be used in the output files.
+#[derive(PartialEq, Debug)]
+enum OutputNewLineMarkerMode {
     Auto,
     Linux,
     MacOs,
     Windows,
 }
 
+#[derive(PartialEq, Debug)]
 enum NonStandardWhitespaceReplacementMode {
     Ignore,
     ReplaceWithSpace,
     Remove,
 }
 
+#[derive(PartialEq, Debug)]
 enum EmptyFileReplacementMode {
     Ignore,
     Empty,
     OneLine,
-}
-
-impl fmt::Display for NewLineMarker {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match *self {
-            Self::Linux => "Linux",
-            Self::MacOs => "MacOS",
-            Self::Windows => "Windows",
-        };
-        write!(f, "{:?}", printable)
-    }
 }
 
 struct Options {
@@ -74,13 +66,14 @@ struct Options {
     normalize_new_line_markers: bool,
     remove_trailing_whitespace: bool,
     remove_trailing_empty_lines: bool,
-    new_line_marker: NewLineMarkerMode,
+    new_line_marker: OutputNewLineMarkerMode,
     normalize_empty_files: EmptyFileReplacementMode,
     normalize_whitespace_only_files: EmptyFileReplacementMode,
     replace_tabs_with_spaces: isize,
     normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode,
 }
 
+#[derive(PartialEq, Debug)]
 enum ChangeType {
     NewLineMarkerAddedToEndOfFile,
     NewLineMarkerRemovedFromEndOfFile,
@@ -141,10 +134,10 @@ fn push_new_line_marker(output: &mut Vec<u8>, output_new_line_marker: &NewLineMa
 fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
     // Figure out what new line marker to write to the output buffer.
     let output_new_line_marker = match options.new_line_marker {
-        NewLineMarkerMode::Auto => find_most_common_new_line_marker(input_data),
-        NewLineMarkerMode::Linux => NewLineMarker::Linux,
-        NewLineMarkerMode::MacOs => NewLineMarker::MacOs,
-        NewLineMarkerMode::Windows => NewLineMarker::Windows,
+        OutputNewLineMarkerMode::Auto => find_most_common_new_line_marker(input_data),
+        OutputNewLineMarkerMode::Linux => NewLineMarker::Linux,
+        OutputNewLineMarkerMode::MacOs => NewLineMarker::MacOs,
+        OutputNewLineMarkerMode::Windows => NewLineMarker::Windows,
     };
 
     // Index into the input buffer.
@@ -384,7 +377,7 @@ fn main() {
     dbg!(String::from_utf8_lossy(&input_data));
 
     let new_line_marker: NewLineMarker = find_most_common_new_line_marker(&input_data);
-    println!("Most common new line marker is {}", new_line_marker);
+    println!("Most common new line marker is {:?}", new_line_marker);
 
     let options: Options = Options {
         add_new_line_marker_at_end_of_file: true,
@@ -392,7 +385,7 @@ fn main() {
         normalize_new_line_markers: true,
         remove_trailing_whitespace: true,
         remove_trailing_empty_lines: true,
-        new_line_marker: NewLineMarkerMode::Linux,
+        new_line_marker: OutputNewLineMarkerMode::Linux,
         normalize_empty_files: EmptyFileReplacementMode::Empty,
         normalize_whitespace_only_files: EmptyFileReplacementMode::Empty,
         replace_tabs_with_spaces: -1,
@@ -453,7 +446,7 @@ mod tests {
             normalize_new_line_markers: true,
             remove_trailing_whitespace: true,
             remove_trailing_empty_lines: true,
-            new_line_marker: NewLineMarkerMode::Linux,
+            new_line_marker: OutputNewLineMarkerMode::Linux,
             normalize_empty_files: EmptyFileReplacementMode::Empty,
             normalize_whitespace_only_files: EmptyFileReplacementMode::Empty,
             replace_tabs_with_spaces: -1,
@@ -470,7 +463,7 @@ mod tests {
             normalize_new_line_markers: false,
             remove_trailing_whitespace: true,
             remove_trailing_empty_lines: true,
-            new_line_marker: NewLineMarkerMode::Linux,
+            new_line_marker: OutputNewLineMarkerMode::Linux,
             normalize_empty_files: EmptyFileReplacementMode::Empty,
             normalize_whitespace_only_files: EmptyFileReplacementMode::Empty,
             replace_tabs_with_spaces: -1,
