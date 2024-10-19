@@ -138,10 +138,10 @@ fn push_new_line_marker(output: &mut Vec<u8>, output_new_line_marker: &NewLineMa
     }
 }
 
-fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
+fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
     // Figure out what new line marker to write to the output buffer.
     let output_new_line_marker = match options.new_line_marker {
-        NewLineMarkerMode::Auto => find_most_common_new_line_marker(input),
+        NewLineMarkerMode::Auto => find_most_common_new_line_marker(input_data),
         NewLineMarkerMode::Linux => NewLineMarker::Linux,
         NewLineMarkerMode::MacOs => NewLineMarker::MacOs,
         NewLineMarkerMode::Windows => NewLineMarker::Windows,
@@ -155,7 +155,7 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
     // If there are no changes, the output will be exactly the same as input.
     // In order to avoid too many reallocations, reserve the capacity
     // equal to the size of the input buffer.
-    let mut output: Vec<u8> = Vec::with_capacity(input.len());
+    let mut output_data: Vec<u8> = Vec::with_capacity(input_data.len());
 
     // List of changes between input and output.
     let mut changes: Vec<Change> = Vec::new();
@@ -185,13 +185,13 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
     // Line number of the last non-empty line.
     let mut last_non_empty_line_number: usize = 0;
 
-    while i < input.len() {
-        if input[i] == CARRIAGE_RETURN || input[i] == LINE_FEED {
+    while i < input_data.len() {
+        if input_data[i] == CARRIAGE_RETURN || input_data[i] == LINE_FEED {
             // Parse the new line marker
-            let mut new_line_marker: NewLineMarker;
-            if input[i] == LINE_FEED {
+            let new_line_marker: NewLineMarker;
+            if input_data[i] == LINE_FEED {
                 new_line_marker = NewLineMarker::Linux;
-            } else if i < input.len() - 1 && input[i + 1] == LINE_FEED {
+            } else if i < input_data.len() - 1 && input_data[i + 1] == LINE_FEED {
                 new_line_marker = NewLineMarker::Windows;
                 // Windows new line marker consists of two bytes.
                 // Skip the extra byte.
@@ -201,29 +201,29 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
             }
 
             // Remove trailing whitespace
-            if options.remove_trailing_whitespace && last_non_whitespace < output.len() {
+            if options.remove_trailing_whitespace && last_non_whitespace < output_data.len() {
                 changes.push(Change {
                     line_number: line_number,
                     change_type: ChangeType::RemovedTrailingWhitespace,
                 });
-                output.truncate(last_non_whitespace);
+                output_data.truncate(last_non_whitespace);
             }
 
             // Determine if the last line is empty
-            let is_empty_line: bool = last_end_of_line_including_eol_marker == output.len();
+            let is_empty_line: bool = last_end_of_line_including_eol_marker == output_data.len();
 
             // Add new line marker
-            last_end_of_line_excluding_eol_marker = output.len();
+            last_end_of_line_excluding_eol_marker = output_data.len();
             if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
                 changes.push(Change {
                     line_number: line_number,
                     change_type: ChangeType::ReplacedNewLineMarker,
                 });
-                push_new_line_marker(&mut output, &output_new_line_marker);
+                push_new_line_marker(&mut output_data, &output_new_line_marker);
             } else {
-                push_new_line_marker(&mut output, &new_line_marker);
+                push_new_line_marker(&mut output_data, &new_line_marker);
             }
-            last_end_of_line_including_eol_marker = output.len();
+            last_end_of_line_including_eol_marker = output_data.len();
 
             // Update position of last non-empty line.
             if !is_empty_line {
@@ -234,18 +234,18 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
                 last_non_empty_line_number = line_number;
             }
             line_number += 1;
-        } else if input[i] == SPACE {
-            output.push(input[i]);
-        } else if input[i] == TAB {
+        } else if input_data[i] == SPACE {
+            output_data.push(input_data[i]);
+        } else if input_data[i] == TAB {
             if options.replace_tabs_with_spaces < 0 {
-                output.push(input[i]);
+                output_data.push(input_data[i]);
             } else if options.replace_tabs_with_spaces > 0 {
                 changes.push(Change {
                     line_number: line_number,
                     change_type: ChangeType::ReplacedTabWithSpaces,
                 });
                 for _ in 0..options.replace_tabs_with_spaces {
-                    output.push(SPACE);
+                    output_data.push(SPACE);
                 }
             } else {
                 // Remove the tab character.
@@ -254,13 +254,13 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
                     change_type: ChangeType::RemovedTab,
                 });
             }
-        } else if input[i] == VERTICAL_TAB || input[i] == FORM_FEED {
+        } else if input_data[i] == VERTICAL_TAB || input_data[i] == FORM_FEED {
             match options.normalize_non_standard_whitespace {
                 NonStandardWhitespaceReplacementMode::Ignore => {
-                    output.push(input[i]);
+                    output_data.push(input_data[i]);
                 }
                 NonStandardWhitespaceReplacementMode::ReplaceWithSpace => {
-                    output.push(SPACE);
+                    output_data.push(SPACE);
                     changes.push(Change {
                         line_number: line_number,
                         change_type: ChangeType::ReplacedNonstandardWhitespaceWithSpace,
@@ -275,8 +275,8 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
                 }
             }
         } else {
-            output.push(input[i]);
-            last_non_whitespace = output.len();
+            output_data.push(input_data[i]);
+            last_non_whitespace = output_data.len();
         }
 
         // Move to the next byte
@@ -285,20 +285,20 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
 
     // Remove trailing whitespace from the last line.
     if options.remove_trailing_whitespace
-        && last_end_of_line_including_eol_marker < output.len()
-        && last_non_whitespace < output.len()
+        && last_end_of_line_including_eol_marker < output_data.len()
+        && last_non_whitespace < output_data.len()
     {
         changes.push(Change {
             line_number: line_number,
             change_type: ChangeType::RemovedTrailingWhitespace,
         });
-        output.truncate(last_non_whitespace);
+        output_data.truncate(last_non_whitespace);
     }
 
     // Remove trailing empty lines.
     if options.remove_trailing_empty_lines
-        && last_end_of_line_including_eol_marker == output.len()
-        && last_end_of_non_empty_line_including_eol_marker < output.len()
+        && last_end_of_line_including_eol_marker == output_data.len()
+        && last_end_of_non_empty_line_including_eol_marker < output_data.len()
     {
         line_number = last_non_empty_line_number + 1;
         last_end_of_line_excluding_eol_marker = last_end_of_non_empty_line_excluding_eol_marker;
@@ -307,26 +307,26 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
             line_number: line_number,
             change_type: ChangeType::RemovedEmptyLines,
         });
-        output.truncate(last_end_of_non_empty_line_including_eol_marker);
+        output_data.truncate(last_end_of_non_empty_line_including_eol_marker);
     }
 
     // Add new line marker at the end of the file
     if options.add_new_line_marker_at_end_of_file
-        && last_end_of_line_including_eol_marker < output.len()
+        && last_end_of_line_including_eol_marker < output_data.len()
     {
-        last_end_of_line_excluding_eol_marker = output.len();
+        last_end_of_line_excluding_eol_marker = output_data.len();
         changes.push(Change {
             line_number: line_number,
             change_type: ChangeType::NewLineMarkerAddedToEndOfFile,
         });
-        push_new_line_marker(&mut output, &output_new_line_marker);
-        last_end_of_line_including_eol_marker = output.len();
+        push_new_line_marker(&mut output_data, &output_new_line_marker);
+        last_end_of_line_including_eol_marker = output_data.len();
         line_number += 1;
     }
 
     // Remove new line marker from the end of the file
     if options.remove_new_line_marker_from_end_of_file
-        && last_end_of_line_including_eol_marker == output.len()
+        && last_end_of_line_including_eol_marker == output_data.len()
         && line_number >= 2
     {
         line_number -= 1;
@@ -334,10 +334,10 @@ fn process_file(input: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
             line_number: line_number,
             change_type: ChangeType::NewLineMarkerRemovedFromEndOfFile,
         });
-        output.truncate(last_end_of_line_excluding_eol_marker);
+        output_data.truncate(last_end_of_line_excluding_eol_marker);
     }
 
-    return (output, changes);
+    return (output_data, changes);
 }
 
 /// Computes the most common new line marker based on content of the file.
@@ -380,10 +380,10 @@ fn main() {
     dbg!(args);
 
     // Print content of a file.
-    let data: Vec<u8> = fs::read(&FILE_NAME).unwrap();
-    dbg!(String::from_utf8_lossy(&data));
+    let input_data: Vec<u8> = fs::read(&FILE_NAME).unwrap();
+    dbg!(String::from_utf8_lossy(&input_data));
 
-    let new_line_marker: NewLineMarker = find_most_common_new_line_marker(&data);
+    let new_line_marker: NewLineMarker = find_most_common_new_line_marker(&input_data);
     println!("Most common new line marker is {}", new_line_marker);
 
     let options: Options = Options {
@@ -398,12 +398,14 @@ fn main() {
         replace_tabs_with_spaces: -1,
         normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
     };
-    let (output, changes): (Vec<u8>, Vec<Change>) = process_file(&data, &options);
+    let (output_data, changes): (Vec<u8>, Vec<Change>) = process_file(&input_data, &options);
 
     println!("Number of changes {}", changes.len());
     for change in changes {
         println!("Line {}: {}", change.line_number, change.change_type);
     }
+
+    dbg!(String::from_utf8_lossy(&output_data));
 }
 
 #[cfg(test)]
