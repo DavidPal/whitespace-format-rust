@@ -1,11 +1,25 @@
-// This program formats whitespace in text files.
-// It can
-//  1. Ensure the consistent line endings (Linux, MacOS, Windows).
-//  2. Ensure that each text file ends with a new line marker.
-//  3. Remove empty lines from the end of the file.
-//  4. Remove whitespace from the end of each line.
-//  5. Replace tabs with spaces.
-//  6. Ensure that empty files have zero bytes.
+/// Command line utility for formatting whitespace in text files.
+///
+/// It has the following capabilities:
+///
+///  1. Add a new line marker at the end of the file if it is missing.
+///  2. Remove empty lines from the end of the file.
+///  3. Remove whitespace from the end of each line.
+///  4. Normalize new line markers to Linux, MacOS, or Windows.
+///  4. Replace tabs with spaces.
+///  5. Replace files consisting of only whitespace with zero bytes.
+///
+/// The program automatically detects line endings used in the files.
+///
+/// The program reports any changes made to the files.
+///
+/// With the `--check-only` option, the program reports if files would be changed,
+/// without changing them.
+///
+/// Sample usage:
+///
+/// TODO
+///
 
 use std::env;
 use std::fmt;
@@ -37,7 +51,7 @@ enum NewLineMarker {
     Windows,
 }
 
-// New line marker that should be used in the output files.
+/// New line marker that should be used in the output files.
 #[derive(PartialEq, Debug)]
 enum OutputNewLineMarkerMode {
     Auto,
