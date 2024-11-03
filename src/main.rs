@@ -20,12 +20,12 @@
 ///
 /// TODO
 ///
-
-use std::env;
 use std::fmt;
 use std::fs;
-use std::fs::{DirEntry, ReadDir};
-use std::path::PathBuf;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::process;
+use std::{env, path};
 
 const FILE_NAME: &str = "README.md";
 
@@ -38,6 +38,13 @@ const SPACE: u8 = b' ';
 const TAB: u8 = b'\t';
 const VERTICAL_TAB: u8 = 0x0B; // The same as '\v' in C, C++, Java and Python.
 const FORM_FEED: u8 = 0x0C; // The same as '\f' in C, C++, Java and Python.
+
+enum ExitCode {
+    FileNotFound = 1,
+    FailedToReadDirectory = 2,
+    FailedToReadDirectoryEntry = 3,
+    FailedToReadFile = 4,
+}
 
 /// A possible line ending.
 #[derive(PartialEq, Debug)]
@@ -380,11 +387,47 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
     return NewLineMarker::Windows;
 }
 
-fn list_files(path: &str) {
-    let paths: ReadDir = fs::read_dir(path).unwrap();
-    for path in paths {
-        println!("Name: {}", path.unwrap().path().display())
+fn die(message: &str, exit_code: ExitCode) -> ! {
+    println!("{}", message);
+    process::exit(exit_code as i32);
+}
+
+fn list_files(path: PathBuf, follow_symlinks: bool) -> Vec<PathBuf> {
+    if !path.exists() {
+        die(&format!("Path '{}' does not exist.", path.display()), ExitCode::FileNotFound)
     }
+
+    if !follow_symlinks && path.is_symlink() {
+        return Vec::new();
+    }
+
+    if path.is_file() {
+        return vec!(path);
+    }
+
+    if path.is_dir() {
+        let inner_paths = path.read_dir().unwrap_or_else(
+            |error| { die(
+                &format!("Failed to read directory: {}", path.display()),
+                ExitCode::FailedToReadDirectory,
+            ); }
+        );
+
+        let mut files: Vec<PathBuf> = Vec::new();
+        for inner_path in inner_paths {
+            let inner_path = inner_path.unwrap_or_else(
+                |error| {
+                die(
+                    &format!("Failed to read entry in directory: {}", path.display()),
+                    ExitCode::FailedToReadDirectory,
+                );}
+            );
+            files.extend(list_files(inner_path.path(), follow_symlinks));
+        }
+        return files;
+    }
+
+    return Vec::new();
 }
 
 fn main() {
@@ -423,7 +466,7 @@ fn main() {
 
     dbg!(String::from_utf8_lossy(&output_data));
 
-    list_files("./");
+    println!("{:?}", list_files(PathBuf::from("./"), false));
 }
 
 #[cfg(test)]
