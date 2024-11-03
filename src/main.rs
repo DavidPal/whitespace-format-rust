@@ -105,6 +105,78 @@ struct Options {
     normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode,
 }
 
+impl Options {
+    fn new() -> Options {
+        Options {
+            add_new_line_marker_at_end_of_file: false,
+            remove_new_line_marker_from_end_of_file: false,
+            normalize_new_line_markers: false,
+            remove_trailing_whitespace: false,
+            remove_trailing_empty_lines: false,
+            new_line_marker: OutputNewLineMarkerMode::Auto,
+            normalize_empty_files: TrivialFileReplacementMode::Ignore,
+            normalize_whitespace_only_files: TrivialFileReplacementMode::Ignore,
+            replace_tabs_with_spaces: -1,
+            normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
+        }
+    }
+
+    fn add_new_line_marker_at_end_of_file(mut self) -> Self {
+        self.add_new_line_marker_at_end_of_file = true;
+        self.remove_new_line_marker_from_end_of_file = false;
+        return self;
+    }
+
+    fn remove_new_line_marker_from_end_of_file(mut self) -> Self {
+        self.remove_new_line_marker_from_end_of_file = true;
+        self.add_new_line_marker_at_end_of_file = false;
+        return self;
+    }
+
+    fn normalize_new_line_markers(mut self) -> Self {
+        self.normalize_new_line_markers = true;
+        return self;
+    }
+
+    fn remove_trailing_whitespace(mut self) -> Self {
+        self.remove_trailing_whitespace = true;
+        return self;
+    }
+
+    fn remove_trailing_empty_lines(mut self) -> Self {
+        self.remove_trailing_empty_lines = true;
+        return self;
+    }
+
+    fn new_line_marker(mut self, output_new_line_marker_mode: OutputNewLineMarkerMode) -> Self {
+        self.new_line_marker = output_new_line_marker_mode;
+        return self;
+    }
+
+    fn normalize_empty_files(mut self, mode: TrivialFileReplacementMode) -> Self {
+        self.normalize_empty_files = mode;
+        return self;
+    }
+
+    fn normalize_whitespace_only_files(mut self, mode: TrivialFileReplacementMode) -> Self {
+        self.normalize_whitespace_only_files = mode;
+        return self;
+    }
+
+    fn replace_tabs_with_spaces(mut self, num_spaces: isize) -> Self {
+        self.replace_tabs_with_spaces = num_spaces;
+        return self;
+    }
+
+    fn normalize_non_standard_whitespace(
+        mut self,
+        mode: NonStandardWhitespaceReplacementMode,
+    ) -> Self {
+        self.normalize_non_standard_whitespace = mode;
+        return self;
+    }
+}
+
 #[derive(PartialEq, Debug)]
 enum ChangeType {
     NewLineMarkerAddedToEndOfFile,
@@ -291,7 +363,7 @@ fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) 
                 });
                 output_data.extend_from_slice(output_new_line_marker.to_bytes());
             } else {
-                output_data.extend_from_slice(output_new_line_marker.to_bytes());
+                output_data.extend_from_slice(new_line_marker.to_bytes());
             }
             last_end_of_line_including_eol_marker = output_data.len();
 
@@ -532,6 +604,9 @@ mod tests {
     #[test]
     fn test_is_file_whitespace() {
         assert_eq!(is_file_whitespace(&[]), true);
+        assert_eq!(is_file_whitespace(b"    "), true);
+        assert_eq!(is_file_whitespace(b"\n\n\n"), true);
+        assert_eq!(is_file_whitespace(b"\r\r\r"), true);
         assert_eq!(is_file_whitespace(b" \t\n\r"), true);
         assert_eq!(is_file_whitespace(b"hello"), false);
         assert_eq!(is_file_whitespace(b"hello world\n"), false);
@@ -541,15 +616,15 @@ mod tests {
     fn test_find_most_common_new_line_marker() {
         assert_eq!(find_most_common_new_line_marker(&[]), NewLineMarker::Linux);
         assert_eq!(
-            find_most_common_new_line_marker(&[LINE_FEED]),
+            find_most_common_new_line_marker(b"\n"),
             NewLineMarker::Linux
         );
         assert_eq!(
-            find_most_common_new_line_marker(&[CARRIAGE_RETURN]),
+            find_most_common_new_line_marker(b"\r"),
             NewLineMarker::MacOs
         );
         assert_eq!(
-            find_most_common_new_line_marker(&[CARRIAGE_RETURN, LINE_FEED]),
+            find_most_common_new_line_marker(b"\r\n"),
             NewLineMarker::Windows
         );
         assert_eq!(
@@ -571,39 +646,102 @@ mod tests {
     }
 
     #[test]
-    fn test_process_file() {
-        let options: Options = Options {
-            add_new_line_marker_at_end_of_file: true,
-            remove_new_line_marker_from_end_of_file: false,
-            normalize_new_line_markers: true,
-            remove_trailing_whitespace: true,
-            remove_trailing_empty_lines: true,
-            new_line_marker: OutputNewLineMarkerMode::Linux,
-            normalize_empty_files: TrivialFileReplacementMode::Empty,
-            normalize_whitespace_only_files: TrivialFileReplacementMode::Empty,
-            replace_tabs_with_spaces: -1,
-            normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
-        };
-        assert_eq!(process_file(b"hello world", &options).0, b"hello world\n");
+    fn test_process_file_do_nothing() {
+        let options: Options = Options::new();
+        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        assert_eq!(output, b"hello\r\n\rworld  ");
+        assert_eq!(changes.len(), 0);
     }
 
     #[test]
-    fn test_process_file_2() {
-        let options: Options = Options {
-            add_new_line_marker_at_end_of_file: true,
-            remove_new_line_marker_from_end_of_file: false,
-            normalize_new_line_markers: false,
-            remove_trailing_whitespace: true,
-            remove_trailing_empty_lines: true,
-            new_line_marker: OutputNewLineMarkerMode::Linux,
-            normalize_empty_files: TrivialFileReplacementMode::Empty,
-            normalize_whitespace_only_files: TrivialFileReplacementMode::Empty,
-            replace_tabs_with_spaces: -1,
-            normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
-        };
-        assert_eq!(
-            process_file(b"hello world\r\n", &options).0,
-            b"hello world\n"
-        );
+    fn test_process_file_do_nothing_whitespace_only_file() {
+        let options: Options = Options::new();
+        let (output, changes) = process_file(b"  ", &options);
+        assert_eq!(output, b"  ");
+        assert_eq!(changes.len(), 0);
+    }
+
+    #[test]
+    fn test_process_file_do_nothing_empty_file() {
+        let options: Options = Options::new();
+        let (output, changes) = process_file(b"", &options);
+        assert_eq!(output, b"");
+        assert_eq!(changes.len(), 0);
+    }
+
+    #[test]
+    fn test_process_file_add_new_line_marker_auto() {
+        let options: Options = Options::new().add_new_line_marker_at_end_of_file();
+        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        assert_eq!(output, b"hello\r\n\rworld  \r");
+        assert_eq!(changes.len(), 1);
+    }
+
+    #[test]
+    fn test_process_file_add_new_line_marker_linux() {
+        let options: Options = Options::new()
+            .add_new_line_marker_at_end_of_file()
+            .new_line_marker(OutputNewLineMarkerMode::Linux);
+        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        assert_eq!(output, b"hello\r\n\rworld  \n");
+        assert_eq!(changes.len(), 1);
+    }
+
+    #[test]
+    fn test_process_file_add_new_line_marker_macos() {
+        let options: Options = Options::new()
+            .add_new_line_marker_at_end_of_file()
+            .new_line_marker(OutputNewLineMarkerMode::MacOs);
+        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        assert_eq!(output, b"hello\r\n\rworld  \r");
+        assert_eq!(changes.len(), 1);
+    }
+
+    #[test]
+    fn test_process_file_add_new_line_marker_windows() {
+        let options: Options = Options::new()
+            .add_new_line_marker_at_end_of_file()
+            .new_line_marker(OutputNewLineMarkerMode::Windows);
+        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        assert_eq!(output, b"hello\r\n\rworld  \r\n");
+        assert_eq!(changes.len(), 1);
+    }
+
+    #[test]
+    fn test_process_file_normalize_new_line_markers_auto() {
+        let options: Options = Options::new().normalize_new_line_markers();
+        let (output, changes) = process_file(b"hello\r\n\rworld  \r\n", &options);
+        assert_eq!(output, b"hello\r\n\r\nworld  \r\n");
+        assert_eq!(changes.len(), 1);
+    }
+
+    #[test]
+    fn test_process_file_normalize_new_line_markers_linux() {
+        let options: Options = Options::new()
+            .normalize_new_line_markers()
+            .new_line_marker(OutputNewLineMarkerMode::Linux);
+        let (output, changes) = process_file(b"hello\r\n\rworld  \r\n", &options);
+        assert_eq!(output, b"hello\n\nworld  \n");
+        assert_eq!(changes.len(), 3);
+    }
+
+    #[test]
+    fn test_process_file_normalize_new_line_markers_macos() {
+        let options: Options = Options::new()
+            .normalize_new_line_markers()
+            .new_line_marker(OutputNewLineMarkerMode::MacOs);
+        let (output, changes) = process_file(b"hello\r\n\rworld  \r\n", &options);
+        assert_eq!(output, b"hello\r\rworld  \r");
+        assert_eq!(changes.len(), 2);
+    }
+
+    #[test]
+    fn test_process_file_normalize_new_line_markers_windows() {
+        let options: Options = Options::new()
+            .normalize_new_line_markers()
+            .new_line_marker(OutputNewLineMarkerMode::Windows);
+        let (output, changes) = process_file(b"hello\r\n\rworld  \r\n", &options);
+        assert_eq!(output, b"hello\r\n\r\nworld  \r\n");
+        assert_eq!(changes.len(), 1);
     }
 }
