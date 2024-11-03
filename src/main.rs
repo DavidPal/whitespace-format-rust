@@ -128,6 +128,9 @@ struct Options {
 
     #[arg(long, value_enum, default_value_t = NonStandardWhitespaceReplacementMode::Ignore)]
     normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode,
+
+    #[arg(num_args = 1.., value_delimiter = ' ')]
+    paths: Vec<PathBuf>,
 }
 
 impl Options {
@@ -143,6 +146,7 @@ impl Options {
             normalize_whitespace_only_files: TrivialFileReplacementMode::Ignore,
             replace_tabs_with_spaces: -1,
             normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
+            paths: Vec::new(),
         }
     }
 
