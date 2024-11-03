@@ -1,4 +1,3 @@
-use crate::ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine;
 /// Command line utility for formatting whitespace in text files.
 ///
 /// It has the following capabilities:
