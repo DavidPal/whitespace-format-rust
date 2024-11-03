@@ -24,6 +24,8 @@
 use std::env;
 use std::fmt;
 use std::fs;
+use std::fs::{DirEntry, ReadDir};
+use std::path::PathBuf;
 
 const FILE_NAME: &str = "README.md";
 
@@ -378,6 +380,13 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
     return NewLineMarker::Windows;
 }
 
+fn list_files(path: &str) {
+    let paths: ReadDir = fs::read_dir(path).unwrap();
+    for path in paths {
+        println!("Name: {}", path.unwrap().path().display())
+    }
+}
+
 fn main() {
     // Print hello world.
     println!("Hello, world!");
@@ -413,6 +422,8 @@ fn main() {
     }
 
     dbg!(String::from_utf8_lossy(&output_data));
+
+    list_files("./");
 }
 
 #[cfg(test)]
