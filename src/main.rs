@@ -1,3 +1,4 @@
+use crate::ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine;
 /// Command line utility for formatting whitespace in text files.
 ///
 /// It has the following capabilities:
@@ -20,12 +21,11 @@
 ///
 /// TODO
 ///
+use std::env;
 use std::fmt;
 use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process;
-use std::{env, path};
 
 const FILE_NAME: &str = "README.md";
 
@@ -60,6 +60,16 @@ enum NewLineMarker {
     Windows,
 }
 
+impl NewLineMarker {
+    fn to_bytes(&self) -> &'static [u8] {
+        match &self {
+            NewLineMarker::Linux => &[LINE_FEED],
+            NewLineMarker::MacOs => &[CARRIAGE_RETURN],
+            NewLineMarker::Windows => &[CARRIAGE_RETURN, LINE_FEED],
+        }
+    }
+}
+
 /// New line marker that should be used in the output files.
 #[derive(PartialEq, Debug)]
 enum OutputNewLineMarkerMode {
@@ -77,7 +87,7 @@ enum NonStandardWhitespaceReplacementMode {
 }
 
 #[derive(PartialEq, Debug)]
-enum EmptyFileReplacementMode {
+enum TrivialFileReplacementMode {
     Ignore,
     Empty,
     OneLine,
@@ -90,8 +100,8 @@ struct Options {
     remove_trailing_whitespace: bool,
     remove_trailing_empty_lines: bool,
     new_line_marker: OutputNewLineMarkerMode,
-    normalize_empty_files: EmptyFileReplacementMode,
-    normalize_whitespace_only_files: EmptyFileReplacementMode,
+    normalize_empty_files: TrivialFileReplacementMode,
+    normalize_whitespace_only_files: TrivialFileReplacementMode,
     replace_tabs_with_spaces: isize,
     normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode,
 }
@@ -105,6 +115,7 @@ enum ChangeType {
     RemovedEmptyLines,
     ReplacedEmptyFileWithOneLine,
     ReplacedWhiteSpaceOnlyFileWithEmptyFile,
+    ReplacedWhiteSpaceOnlyFileWithOneLine,
     ReplacedTabWithSpaces,
     RemovedTab,
     ReplacedNonstandardWhitespaceWithSpace,
@@ -123,6 +134,7 @@ impl fmt::Display for ChangeType {
             Self::ReplacedWhiteSpaceOnlyFileWithEmptyFile => {
                 "ReplacedWhiteSpaceOnlyFileWithEmptyFile"
             }
+            Self::ReplacedWhiteSpaceOnlyFileWithOneLine => "ReplacedWhiteSpaceOnlyFileWithOneLine",
             Self::ReplacedTabWithSpaces => "ReplacedTabWithSpaces",
             Self::RemovedTab => "RemovedTab",
             Self::ReplacedNonstandardWhitespaceWithSpace => {
@@ -139,29 +151,72 @@ struct Change {
     change_type: ChangeType,
 }
 
-fn push_new_line_marker(output: &mut Vec<u8>, output_new_line_marker: &NewLineMarker) {
-    match output_new_line_marker {
-        NewLineMarker::Linux => {
-            output.push(LINE_FEED);
-        }
-        NewLineMarker::MacOs => {
-            output.push(CARRIAGE_RETURN);
-        }
-        NewLineMarker::Windows => {
-            output.push(CARRIAGE_RETURN);
-            output.push(LINE_FEED);
-        }
+fn is_file_whitespace(input_data: &[u8]) -> bool {
+    for char in input_data {
+        match *char {
+            CARRIAGE_RETURN => continue,
+            LINE_FEED => continue,
+            SPACE => continue,
+            TAB => continue,
+            VERTICAL_TAB => continue,
+            FORM_FEED => continue,
+            _ => return false,
+        };
     }
+    return true;
 }
 
 fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
-    // Figure out what new line marker to write to the output buffer.
+    // Figure out what new line marker to use when writing to the output buffer.
     let output_new_line_marker = match options.new_line_marker {
         OutputNewLineMarkerMode::Auto => find_most_common_new_line_marker(input_data),
         OutputNewLineMarkerMode::Linux => NewLineMarker::Linux,
         OutputNewLineMarkerMode::MacOs => NewLineMarker::MacOs,
         OutputNewLineMarkerMode::Windows => NewLineMarker::Windows,
     };
+
+    // Handle empty file.
+    if input_data.len() == 0 {
+        return match options.normalize_empty_files {
+            TrivialFileReplacementMode::Empty | TrivialFileReplacementMode::Ignore => {
+                (Vec::new(), Vec::new())
+            }
+            TrivialFileReplacementMode::OneLine => (
+                Vec::from(output_new_line_marker.to_bytes()),
+                Vec::from([Change {
+                    line_number: 1,
+                    change_type: ChangeType::ReplacedEmptyFileWithOneLine,
+                }]),
+            ),
+        };
+    }
+
+    // Handle non-empty file consisting of whitespace only.
+    if is_file_whitespace(input_data) {
+        return match options.normalize_whitespace_only_files {
+            TrivialFileReplacementMode::Empty => (
+                Vec::new(),
+                Vec::from([Change {
+                    line_number: 1,
+                    change_type: ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile,
+                }]),
+            ),
+            TrivialFileReplacementMode::Ignore => (Vec::from(input_data), Vec::new()),
+            TrivialFileReplacementMode::OneLine => {
+                if input_data == output_new_line_marker.to_bytes() {
+                    (Vec::from(output_new_line_marker.to_bytes()), Vec::new())
+                } else {
+                    (
+                        Vec::from(output_new_line_marker.to_bytes()),
+                        Vec::from([Change {
+                            line_number: 1,
+                            change_type: ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine,
+                        }]),
+                    )
+                }
+            }
+        };
+    }
 
     // Index into the input buffer.
     let mut i: usize = 0;
@@ -235,9 +290,9 @@ fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) 
                     line_number: line_number,
                     change_type: ChangeType::ReplacedNewLineMarker,
                 });
-                push_new_line_marker(&mut output_data, &output_new_line_marker);
+                output_data.extend_from_slice(output_new_line_marker.to_bytes());
             } else {
-                push_new_line_marker(&mut output_data, &new_line_marker);
+                output_data.extend_from_slice(output_new_line_marker.to_bytes());
             }
             last_end_of_line_including_eol_marker = output_data.len();
 
@@ -335,7 +390,7 @@ fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) 
             line_number: line_number,
             change_type: ChangeType::NewLineMarkerAddedToEndOfFile,
         });
-        push_new_line_marker(&mut output_data, &output_new_line_marker);
+        output_data.extend_from_slice(output_new_line_marker.to_bytes());
         last_end_of_line_including_eol_marker = output_data.len();
         line_number += 1;
     }
@@ -394,7 +449,10 @@ fn die(message: &str, exit_code: ExitCode) -> ! {
 
 fn list_files(path: PathBuf, follow_symlinks: bool) -> Vec<PathBuf> {
     if !path.exists() {
-        die(&format!("Path '{}' does not exist.", path.display()), ExitCode::FileNotFound)
+        die(
+            &format!("Path '{}' does not exist.", path.display()),
+            ExitCode::FileNotFound,
+        )
     }
 
     if !follow_symlinks && path.is_symlink() {
@@ -402,26 +460,25 @@ fn list_files(path: PathBuf, follow_symlinks: bool) -> Vec<PathBuf> {
     }
 
     if path.is_file() {
-        return vec!(path);
+        return vec![path];
     }
 
     if path.is_dir() {
-        let inner_paths = path.read_dir().unwrap_or_else(
-            |error| { die(
+        let inner_paths = path.read_dir().unwrap_or_else(|error| {
+            die(
                 &format!("Failed to read directory: {}", path.display()),
                 ExitCode::FailedToReadDirectory,
-            ); }
-        );
+            );
+        });
 
         let mut files: Vec<PathBuf> = Vec::new();
         for inner_path in inner_paths {
-            let inner_path = inner_path.unwrap_or_else(
-                |error| {
+            let inner_path = inner_path.unwrap_or_else(|error| {
                 die(
                     &format!("Failed to read entry in directory: {}", path.display()),
                     ExitCode::FailedToReadDirectory,
-                );}
-            );
+                );
+            });
             files.extend(list_files(inner_path.path(), follow_symlinks));
         }
         return files;
@@ -452,8 +509,8 @@ fn main() {
         remove_trailing_whitespace: true,
         remove_trailing_empty_lines: true,
         new_line_marker: OutputNewLineMarkerMode::Linux,
-        normalize_empty_files: EmptyFileReplacementMode::Empty,
-        normalize_whitespace_only_files: EmptyFileReplacementMode::Empty,
+        normalize_empty_files: TrivialFileReplacementMode::Empty,
+        normalize_whitespace_only_files: TrivialFileReplacementMode::Empty,
         replace_tabs_with_spaces: -1,
         normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
     };
@@ -472,6 +529,14 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_is_file_whitespace() {
+        assert_eq!(is_file_whitespace(&[]), true);
+        assert_eq!(is_file_whitespace(b" \t\n\r"), true);
+        assert_eq!(is_file_whitespace(b"hello"), false);
+        assert_eq!(is_file_whitespace(b"hello world\n"), false);
+    }
 
     #[test]
     fn test_find_most_common_new_line_marker() {
@@ -515,8 +580,8 @@ mod tests {
             remove_trailing_whitespace: true,
             remove_trailing_empty_lines: true,
             new_line_marker: OutputNewLineMarkerMode::Linux,
-            normalize_empty_files: EmptyFileReplacementMode::Empty,
-            normalize_whitespace_only_files: EmptyFileReplacementMode::Empty,
+            normalize_empty_files: TrivialFileReplacementMode::Empty,
+            normalize_whitespace_only_files: TrivialFileReplacementMode::Empty,
             replace_tabs_with_spaces: -1,
             normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
         };
@@ -532,14 +597,14 @@ mod tests {
             remove_trailing_whitespace: true,
             remove_trailing_empty_lines: true,
             new_line_marker: OutputNewLineMarkerMode::Linux,
-            normalize_empty_files: EmptyFileReplacementMode::Empty,
-            normalize_whitespace_only_files: EmptyFileReplacementMode::Empty,
+            normalize_empty_files: TrivialFileReplacementMode::Empty,
+            normalize_whitespace_only_files: TrivialFileReplacementMode::Empty,
             replace_tabs_with_spaces: -1,
             normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
         };
         assert_eq!(
             process_file(b"hello world\r\n", &options).0,
-            b"hello world\r\n"
+            b"hello world\n"
         );
     }
 }
