@@ -20,7 +20,7 @@
 ///
 /// TODO
 ///
-use std::env;
+use clap::Parser;
 use std::fmt;
 use std::fs;
 use std::path::PathBuf;
@@ -70,38 +70,63 @@ impl NewLineMarker {
 }
 
 /// New line marker that should be used in the output files.
-#[derive(PartialEq, Debug)]
+#[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
 enum OutputNewLineMarkerMode {
+    #[default]
     Auto,
     Linux,
     MacOs,
     Windows,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
 enum NonStandardWhitespaceReplacementMode {
+    #[default]
     Ignore,
     ReplaceWithSpace,
     Remove,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
 enum TrivialFileReplacementMode {
+    #[default]
     Ignore,
     Empty,
     OneLine,
 }
 
+#[derive(clap::Parser, Debug)]
+#[command(version, about, long_about = None)]
 struct Options {
+
+    #[arg(long, default_value_t = false)]
     add_new_line_marker_at_end_of_file: bool,
+
+    #[arg(long, default_value_t = false)]
     remove_new_line_marker_from_end_of_file: bool,
+
+    #[arg(long, default_value_t = false)]
     normalize_new_line_markers: bool,
+
+    #[arg(long, default_value_t = false)]
     remove_trailing_whitespace: bool,
+
+    #[arg(long, default_value_t = false)]
     remove_trailing_empty_lines: bool,
+
+    #[arg(long, value_enum, default_value_t = OutputNewLineMarkerMode::Auto)]
     new_line_marker: OutputNewLineMarkerMode,
+
+    #[arg(long, value_enum, default_value_t = TrivialFileReplacementMode::Ignore)]
     normalize_empty_files: TrivialFileReplacementMode,
+
+    #[arg(long, value_enum, default_value_t = TrivialFileReplacementMode::Ignore)]
     normalize_whitespace_only_files: TrivialFileReplacementMode,
+
+    #[arg(long, default_value_t = -1)]
     replace_tabs_with_spaces: isize,
+
+    #[arg(long, value_enum, default_value_t = NonStandardWhitespaceReplacementMode::Ignore)]
     normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode,
 }
 
@@ -559,12 +584,8 @@ fn list_files(path: PathBuf, follow_symlinks: bool) -> Vec<PathBuf> {
 }
 
 fn main() {
-    // Print hello world.
-    println!("Hello, world!");
-
-    // Print command line arguments.
-    let args: Vec<String> = env::args().collect();
-    dbg!(args);
+    let options: Options = Options::parse();
+    dbg!(&options);
 
     // Print content of a file.
     let input_data: Vec<u8> = fs::read(&FILE_NAME).unwrap();
@@ -573,18 +594,6 @@ fn main() {
     let new_line_marker: NewLineMarker = find_most_common_new_line_marker(&input_data);
     println!("Most common new line marker is {:?}", new_line_marker);
 
-    let options: Options = Options {
-        add_new_line_marker_at_end_of_file: true,
-        remove_new_line_marker_from_end_of_file: false,
-        normalize_new_line_markers: true,
-        remove_trailing_whitespace: true,
-        remove_trailing_empty_lines: true,
-        new_line_marker: OutputNewLineMarkerMode::Linux,
-        normalize_empty_files: TrivialFileReplacementMode::Empty,
-        normalize_whitespace_only_files: TrivialFileReplacementMode::Empty,
-        replace_tabs_with_spaces: -1,
-        normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
-    };
     let (output_data, changes): (Vec<u8>, Vec<Change>) = process_file(&input_data, &options);
 
     println!("Number of changes {}", changes.len());
