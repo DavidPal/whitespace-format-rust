@@ -576,44 +576,62 @@ fn die(message: &str, exit_code: ExitCode) -> ! {
     process::exit(exit_code as i32);
 }
 
-fn list_files(path: PathBuf, follow_symlinks: bool) -> Vec<PathBuf> {
-    if !path.exists() {
-        die(
-            &format!("Path '{}' does not exist.", path.display()),
-            ExitCode::FileNotFound,
-        )
-    }
+/// Lists all files in a collection of paths (directories or files).
+fn list_files(paths: Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
+    let mut paths: Vec<PathBuf> = paths.clone();
+    let mut files: Vec<PathBuf> = Vec::new();
 
-    if !follow_symlinks && path.is_symlink() {
-        return Vec::new();
-    }
+    loop {
+        let mut directories : Vec<PathBuf> = Vec::new();
 
-    if path.is_file() {
-        return vec![path];
-    }
-
-    if path.is_dir() {
-        let inner_paths = path.read_dir().unwrap_or_else(|error| {
-            die(
-                &format!("Failed to read directory: {}", path.display()),
-                ExitCode::FailedToReadDirectory,
-            );
-        });
-
-        let mut files: Vec<PathBuf> = Vec::new();
-        for inner_path in inner_paths {
-            let inner_path = inner_path.unwrap_or_else(|error| {
+        for path in paths.iter() {
+            if !path.exists() {
                 die(
-                    &format!("Failed to read entry in directory: {}", path.display()),
+                    &format!("Path '{}' does not exist.", path.display()),
+                    ExitCode::FileNotFound,
+                )
+            }
+
+            if path.is_symlink() && !follow_symlinks {
+                continue;
+            }
+
+            if path.is_file() {
+                files.push(path.clone());
+            }
+
+            if path.is_dir() {
+                directories.push(path.clone());
+            }
+        }
+
+        if directories.is_empty() {
+            break;
+        }
+
+        paths.clear();
+
+        for directory in directories.iter() {
+            let inner_paths = directory.read_dir().unwrap_or_else(|error| {
+                die(
+                    &format!("Failed to read directory: {}", directory.display()),
                     ExitCode::FailedToReadDirectory,
                 );
             });
-            files.extend(list_files(inner_path.path(), follow_symlinks));
+
+            for inner_path in inner_paths {
+                let inner_path = inner_path.unwrap_or_else(|error| {
+                    die(
+                        &format!("Failed to read an entry in directory: {}", directory.display()),
+                        ExitCode::FailedToReadDirectory,
+                    );
+                });
+                paths.push(inner_path.path());
+            }
         }
-        return files;
     }
 
-    return Vec::new();
+    return files;
 }
 
 fn main() {
@@ -636,7 +654,7 @@ fn main() {
 
     dbg!(String::from_utf8_lossy(&output_data));
 
-    println!("{:?}", list_files(PathBuf::from("./"), false));
+    println!("{:?}", list_files(vec!(PathBuf::from("./")), false));
 }
 
 #[cfg(test)]
