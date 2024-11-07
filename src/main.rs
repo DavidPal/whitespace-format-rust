@@ -129,7 +129,7 @@ struct CommandLineArguments {
     #[arg(long, value_enum, default_value_t = NonStandardWhitespaceReplacementMode::Ignore)]
     normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode,
 
-    #[arg(num_args = 1.., value_delimiter = ' ')]
+    #[arg(num_args = 1.., required = true, value_delimiter = ' ')]
     paths: Vec<PathBuf>,
 }
 
@@ -652,7 +652,6 @@ fn main() {
     }
 
     dbg!(String::from_utf8_lossy(&output_data));
-
 }
 
 #[cfg(test)]
