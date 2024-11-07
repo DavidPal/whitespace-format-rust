@@ -577,7 +577,7 @@ fn die(message: &str, exit_code: ExitCode) -> ! {
 }
 
 /// Lists all files in a collection of paths (directories or files).
-fn list_files(paths: Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
+fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = paths.clone();
     let mut files: Vec<PathBuf> = Vec::new();
 
@@ -638,12 +638,11 @@ fn main() {
     let command_line_arguments: CommandLineArguments = CommandLineArguments::parse();
     dbg!(&command_line_arguments);
 
+    println!("{:?}", list_files(&command_line_arguments.paths, false));
+
     // Print content of a file.
     let input_data: Vec<u8> = fs::read(&FILE_NAME).unwrap();
     dbg!(String::from_utf8_lossy(&input_data));
-
-    let new_line_marker: NewLineMarker = find_most_common_new_line_marker(&input_data);
-    println!("Most common new line marker is {:?}", new_line_marker);
 
     let (output_data, changes): (Vec<u8>, Vec<Change>) = process_file(&input_data, &command_line_arguments.get_options());
 
@@ -654,7 +653,6 @@ fn main() {
 
     dbg!(String::from_utf8_lossy(&output_data));
 
-    println!("{:?}", list_files(vec!(PathBuf::from("./")), false));
 }
 
 #[cfg(test)]
