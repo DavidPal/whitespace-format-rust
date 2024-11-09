@@ -1,4 +1,4 @@
-use super::exit::{die,ExitCode};
+use super::exit::{die, ExitCode};
 use std::path::PathBuf;
 
 /// Lists all files in a collection of paths (directories or files).
@@ -7,7 +7,7 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = Vec::new();
 
     loop {
-        let mut directories : Vec<PathBuf> = Vec::new();
+        let mut directories: Vec<PathBuf> = Vec::new();
 
         for path in paths.iter() {
             if !path.exists() {
@@ -47,7 +47,10 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
             for inner_path in inner_paths {
                 let inner_path = inner_path.unwrap_or_else(|_error| {
                     die(
-                        &format!("Failed to read an entry in directory: {}", directory.display()),
+                        &format!(
+                            "Failed to read an entry in directory: {}",
+                            directory.display()
+                        ),
                         ExitCode::FailedToReadDirectoryEntry,
                     );
                 });

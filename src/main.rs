@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+mod cli;
+mod discover;
 /// Command line utility for formatting whitespace in text files.
 ///
 /// It has the following capabilities:
@@ -22,12 +24,12 @@
 ///
 /// TODO
 ///
-
 mod exit;
-mod discover;
-mod cli;
 
-use cli::{OutputNewLineMarkerMode,NonStandardWhitespaceReplacementMode,TrivialFileReplacementMode,CommandLineArguments};
+use cli::{
+    CommandLineArguments, NonStandardWhitespaceReplacementMode, OutputNewLineMarkerMode,
+    TrivialFileReplacementMode,
+};
 
 use discover::list_files;
 
@@ -71,7 +73,6 @@ impl NewLineMarker {
     }
 }
 
-
 struct Options {
     add_new_line_marker_at_end_of_file: bool,
     remove_new_line_marker_from_end_of_file: bool,
@@ -89,7 +90,9 @@ impl CommandLineArguments {
     pub fn get_options(&self) -> Options {
         Options {
             add_new_line_marker_at_end_of_file: self.add_new_line_marker_at_end_of_file.clone(),
-            remove_new_line_marker_from_end_of_file: self.remove_new_line_marker_from_end_of_file.clone(),
+            remove_new_line_marker_from_end_of_file: self
+                .remove_new_line_marker_from_end_of_file
+                .clone(),
             normalize_new_line_markers: self.normalize_new_line_markers.clone(),
             remove_trailing_whitespace: self.remove_trailing_whitespace.clone(),
             remove_trailing_empty_lines: self.remove_trailing_empty_lines.clone(),
@@ -101,7 +104,6 @@ impl CommandLineArguments {
         }
     }
 }
-
 
 impl Options {
     fn new() -> Self {
@@ -521,7 +523,8 @@ fn main() {
     let input_data: Vec<u8> = fs::read(&FILE_NAME).unwrap();
     dbg!(String::from_utf8_lossy(&input_data));
 
-    let (output_data, changes): (Vec<u8>, Vec<Change>) = process_file(&input_data, &command_line_arguments.get_options());
+    let (output_data, changes): (Vec<u8>, Vec<Change>) =
+        process_file(&input_data, &command_line_arguments.get_options());
 
     println!("Number of changes {}", changes.len());
     for change in changes {

@@ -29,7 +29,6 @@ pub enum TrivialFileReplacementMode {
 #[derive(clap::Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct CommandLineArguments {
-
     #[arg(long, default_value_t = false)]
     pub add_new_line_marker_at_end_of_file: bool,
 
