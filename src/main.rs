@@ -20,6 +20,15 @@
 ///
 /// TODO
 ///
+
+pub mod exit;
+pub mod discover;
+
+use exit::die;
+use exit::ExitCode;
+
+use discover::list_files;
+
 use clap::Parser;
 use std::fmt;
 use std::fs;
@@ -37,13 +46,6 @@ const SPACE: u8 = b' ';
 const TAB: u8 = b'\t';
 const VERTICAL_TAB: u8 = 0x0B; // The same as '\v' in C, C++, Java and Python.
 const FORM_FEED: u8 = 0x0C; // The same as '\f' in C, C++, Java and Python.
-
-enum ExitCode {
-    FileNotFound = 1,
-    FailedToReadDirectory = 2,
-    FailedToReadDirectoryEntry = 3,
-    FailedToReadFile = 4,
-}
 
 /// A possible line ending.
 #[derive(PartialEq, Debug)]
@@ -569,69 +571,6 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
         return NewLineMarker::MacOs;
     }
     return NewLineMarker::Windows;
-}
-
-fn die(message: &str, exit_code: ExitCode) -> ! {
-    println!("{}", message);
-    process::exit(exit_code as i32);
-}
-
-/// Lists all files in a collection of paths (directories or files).
-fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
-    let mut paths: Vec<PathBuf> = paths.clone();
-    let mut files: Vec<PathBuf> = Vec::new();
-
-    loop {
-        let mut directories : Vec<PathBuf> = Vec::new();
-
-        for path in paths.iter() {
-            if !path.exists() {
-                die(
-                    &format!("Path '{}' does not exist.", path.display()),
-                    ExitCode::FileNotFound,
-                )
-            }
-
-            if path.is_symlink() && !follow_symlinks {
-                continue;
-            }
-
-            if path.is_file() {
-                files.push(path.clone());
-            }
-
-            if path.is_dir() {
-                directories.push(path.clone());
-            }
-        }
-
-        if directories.is_empty() {
-            break;
-        }
-
-        paths.clear();
-
-        for directory in directories.iter() {
-            let inner_paths = directory.read_dir().unwrap_or_else(|error| {
-                die(
-                    &format!("Failed to read directory: {}", directory.display()),
-                    ExitCode::FailedToReadDirectory,
-                );
-            });
-
-            for inner_path in inner_paths {
-                let inner_path = inner_path.unwrap_or_else(|error| {
-                    die(
-                        &format!("Failed to read an entry in directory: {}", directory.display()),
-                        ExitCode::FailedToReadDirectory,
-                    );
-                });
-                paths.push(inner_path.path());
-            }
-        }
-    }
-
-    return files;
 }
 
 fn main() {
