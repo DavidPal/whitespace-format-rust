@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /// Command line utility for formatting whitespace in text files.
 ///
 /// It has the following capabilities:

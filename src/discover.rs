@@ -37,7 +37,7 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
         paths.clear();
 
         for directory in directories.iter() {
-            let inner_paths = directory.read_dir().unwrap_or_else(|error| {
+            let inner_paths = directory.read_dir().unwrap_or_else(|_error| {
                 die(
                     &format!("Failed to read directory: {}", directory.display()),
                     ExitCode::FailedToReadDirectory,
@@ -45,7 +45,7 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
             });
 
             for inner_path in inner_paths {
-                let inner_path = inner_path.unwrap_or_else(|error| {
+                let inner_path = inner_path.unwrap_or_else(|_error| {
                     die(
                         &format!("Failed to read an entry in directory: {}", directory.display()),
                         ExitCode::FailedToReadDirectoryEntry,
