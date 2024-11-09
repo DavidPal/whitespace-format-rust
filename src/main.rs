@@ -21,19 +21,17 @@
 /// TODO
 ///
 
-pub mod exit;
-pub mod discover;
+mod exit;
+mod discover;
+mod cli;
 
-use exit::die;
-use exit::ExitCode;
+use cli::{OutputNewLineMarkerMode,NonStandardWhitespaceReplacementMode,TrivialFileReplacementMode,CommandLineArguments};
 
 use discover::list_files;
 
 use clap::Parser;
 use std::fmt;
 use std::fs;
-use std::path::PathBuf;
-use std::process;
 
 const FILE_NAME: &str = "README.md";
 
@@ -71,72 +69,22 @@ impl NewLineMarker {
     }
 }
 
-/// New line marker that should be used in the output files.
-#[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
-enum OutputNewLineMarkerMode {
-    #[default]
-    Auto,
-    Linux,
-    MacOs,
-    Windows,
-}
 
-#[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
-enum NonStandardWhitespaceReplacementMode {
-    #[default]
-    Ignore,
-    ReplaceWithSpace,
-    Remove,
-}
-
-#[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
-enum TrivialFileReplacementMode {
-    #[default]
-    Ignore,
-    Empty,
-    OneLine,
-}
-
-#[derive(clap::Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct CommandLineArguments {
-
-    #[arg(long, default_value_t = false)]
+struct Options {
     add_new_line_marker_at_end_of_file: bool,
-
-    #[arg(long, default_value_t = false)]
     remove_new_line_marker_from_end_of_file: bool,
-
-    #[arg(long, default_value_t = false)]
     normalize_new_line_markers: bool,
-
-    #[arg(long, default_value_t = false)]
     remove_trailing_whitespace: bool,
-
-    #[arg(long, default_value_t = false)]
     remove_trailing_empty_lines: bool,
-
-    #[arg(long, value_enum, default_value_t = OutputNewLineMarkerMode::Auto)]
     new_line_marker: OutputNewLineMarkerMode,
-
-    #[arg(long, value_enum, default_value_t = TrivialFileReplacementMode::Ignore)]
     normalize_empty_files: TrivialFileReplacementMode,
-
-    #[arg(long, value_enum, default_value_t = TrivialFileReplacementMode::Ignore)]
     normalize_whitespace_only_files: TrivialFileReplacementMode,
-
-    #[arg(long, default_value_t = -1)]
     replace_tabs_with_spaces: isize,
-
-    #[arg(long, value_enum, default_value_t = NonStandardWhitespaceReplacementMode::Ignore)]
     normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode,
-
-    #[arg(num_args = 1.., required = true, value_delimiter = ' ')]
-    paths: Vec<PathBuf>,
 }
 
 impl CommandLineArguments {
-    fn get_options(&self) -> Options {
+    pub fn get_options(&self) -> Options {
         Options {
             add_new_line_marker_at_end_of_file: self.add_new_line_marker_at_end_of_file.clone(),
             remove_new_line_marker_from_end_of_file: self.remove_new_line_marker_from_end_of_file.clone(),
@@ -152,18 +100,6 @@ impl CommandLineArguments {
     }
 }
 
-struct Options {
-    add_new_line_marker_at_end_of_file: bool,
-    remove_new_line_marker_from_end_of_file: bool,
-    normalize_new_line_markers: bool,
-    remove_trailing_whitespace: bool,
-    remove_trailing_empty_lines: bool,
-    new_line_marker: OutputNewLineMarkerMode,
-    normalize_empty_files: TrivialFileReplacementMode,
-    normalize_whitespace_only_files: TrivialFileReplacementMode,
-    replace_tabs_with_spaces: isize,
-    normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode,
-}
 
 impl Options {
     fn new() -> Self {
