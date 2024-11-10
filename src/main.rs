@@ -1,4 +1,5 @@
 // Modules
+mod change;
 mod cli;
 mod core;
 mod discover;

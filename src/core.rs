@@ -1,9 +1,10 @@
 // Library imports
-use std::fmt;
 use std::fs;
 use std::path::PathBuf;
 
 // Internal imports
+use crate::change::Change;
+use crate::change::ChangeType;
 use crate::cli::CommandLineArguments;
 use crate::cli::NonStandardWhitespaceReplacementMode;
 use crate::cli::OutputNewLineMarkerMode;
@@ -150,51 +151,6 @@ impl Options {
         self.normalize_non_standard_whitespace = mode;
         return self;
     }
-}
-
-#[derive(PartialEq, Debug)]
-enum ChangeType {
-    NewLineMarkerAddedToEndOfFile,
-    NewLineMarkerRemovedFromEndOfFile,
-    ReplacedNewLineMarker,
-    RemovedTrailingWhitespace,
-    RemovedEmptyLines,
-    ReplacedEmptyFileWithOneLine,
-    ReplacedWhiteSpaceOnlyFileWithEmptyFile,
-    ReplacedWhiteSpaceOnlyFileWithOneLine,
-    ReplacedTabWithSpaces,
-    RemovedTab,
-    ReplacedNonstandardWhitespaceWithSpace,
-    RemovedNonstandardWhitespace,
-}
-
-impl fmt::Display for ChangeType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match *self {
-            Self::NewLineMarkerAddedToEndOfFile => "NewLineMarkerAddedToEndOfFile",
-            Self::NewLineMarkerRemovedFromEndOfFile => "NewLineMarkerRemovedFromEndOfFile",
-            Self::ReplacedNewLineMarker => "ReplacedNewLineMarker",
-            Self::RemovedTrailingWhitespace => "RemovedTrailingWhitespace",
-            Self::RemovedEmptyLines => "RemovedEmptyLines",
-            Self::ReplacedEmptyFileWithOneLine => "ReplacedEmptyFileWithOneLine",
-            Self::ReplacedWhiteSpaceOnlyFileWithEmptyFile => {
-                "ReplacedWhiteSpaceOnlyFileWithEmptyFile"
-            }
-            Self::ReplacedWhiteSpaceOnlyFileWithOneLine => "ReplacedWhiteSpaceOnlyFileWithOneLine",
-            Self::ReplacedTabWithSpaces => "ReplacedTabWithSpaces",
-            Self::RemovedTab => "RemovedTab",
-            Self::ReplacedNonstandardWhitespaceWithSpace => {
-                "ReplacedNonstandardWhitespaceWithSpace"
-            }
-            Self::RemovedNonstandardWhitespace => "RemovedNonstandardWhitespace",
-        };
-        write!(f, "{:?}", printable)
-    }
-}
-
-struct Change {
-    pub line_number: usize,
-    pub change_type: ChangeType,
 }
 
 /// Determines if a file consists of only whitespace.
