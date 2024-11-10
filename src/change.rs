@@ -1,46 +1,93 @@
-use std::fmt;
+use crate::core::NewLineMarker;
 
 #[derive(PartialEq, Debug)]
 pub enum ChangeType {
     NewLineMarkerAddedToEndOfFile,
     NewLineMarkerRemovedFromEndOfFile,
-    ReplacedNewLineMarker,
+    ReplacedNewLineMarker(NewLineMarker, NewLineMarker),
     RemovedTrailingWhitespace,
-    RemovedEmptyLines,
+    RemovedEmptyLine,
     ReplacedEmptyFileWithOneLine,
     ReplacedWhiteSpaceOnlyFileWithEmptyFile,
     ReplacedWhiteSpaceOnlyFileWithOneLine,
     ReplacedTabWithSpaces,
     RemovedTab,
-    ReplacedNonstandardWhitespaceWithSpace,
+    ReplacedNonstandardWhitespaceBySpace,
     RemovedNonstandardWhitespace,
 }
 
-impl fmt::Display for ChangeType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match *self {
-            Self::NewLineMarkerAddedToEndOfFile => "NewLineMarkerAddedToEndOfFile",
-            Self::NewLineMarkerRemovedFromEndOfFile => "NewLineMarkerRemovedFromEndOfFile",
-            Self::ReplacedNewLineMarker => "ReplacedNewLineMarker",
-            Self::RemovedTrailingWhitespace => "RemovedTrailingWhitespace",
-            Self::RemovedEmptyLines => "RemovedEmptyLines",
-            Self::ReplacedEmptyFileWithOneLine => "ReplacedEmptyFileWithOneLine",
-            Self::ReplacedWhiteSpaceOnlyFileWithEmptyFile => {
-                "ReplacedWhiteSpaceOnlyFileWithEmptyFile"
+impl ChangeType {
+    /// Human-readable representation of the change.
+    pub fn to_string(&self, check_only: bool) -> String {
+        let check_only_word = if check_only { " would be " } else { " " };
+        match *self {
+            ChangeType::NewLineMarkerAddedToEndOfFile => {
+                format!(
+                    "New line marker{}added to the end of the file.",
+                    check_only_word
+                )
             }
-            Self::ReplacedWhiteSpaceOnlyFileWithOneLine => "ReplacedWhiteSpaceOnlyFileWithOneLine",
-            Self::ReplacedTabWithSpaces => "ReplacedTabWithSpaces",
-            Self::RemovedTab => "RemovedTab",
-            Self::ReplacedNonstandardWhitespaceWithSpace => {
-                "ReplacedNonstandardWhitespaceWithSpace"
+            ChangeType::NewLineMarkerRemovedFromEndOfFile => {
+                format!(
+                    "New line marker{}removed from the end of the file.",
+                    check_only_word
+                )
             }
-            Self::RemovedNonstandardWhitespace => "RemovedNonstandardWhitespace",
-        };
-        write!(f, "{:?}", printable)
+            ChangeType::ReplacedNewLineMarker(_, _) => {
+                format!("New line marker '?'{}replaced by '?'.", check_only_word)
+            }
+            ChangeType::RemovedTrailingWhitespace => {
+                format!("Trailing whitespace{}removed.", check_only_word)
+            }
+            ChangeType::RemovedEmptyLine => {
+                format!("Empty line{}removed.", check_only_word)
+            }
+            ChangeType::ReplacedEmptyFileWithOneLine => {
+                format!(
+                    "Empty file{}replaced with a single empty line.",
+                    check_only_word
+                )
+            }
+            ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile => {
+                format!("File{}replaced with an empty file.", check_only_word)
+            }
+            ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine => {
+                format!("File{}replaced with a single empty line.", check_only_word)
+            }
+            ChangeType::ReplacedTabWithSpaces => {
+                format!("Tab{}replaced with spaces.", check_only_word)
+            }
+            ChangeType::RemovedTab => {
+                format!("Tab{}removed.", check_only_word)
+            }
+            ChangeType::ReplacedNonstandardWhitespaceBySpace => {
+                format!(
+                    "Non-standard whitespace character '?' replaced{}by space.",
+                    check_only_word
+                )
+            }
+            ChangeType::RemovedNonstandardWhitespace => {
+                format!(
+                    "Non-standard whitespace character '?'{}removed.",
+                    check_only_word
+                )
+            }
+        }
     }
 }
 
 pub struct Change {
     pub line_number: usize,
     pub change_type: ChangeType,
+}
+
+impl Change {
+    /// Human-readable representation of the change
+    pub fn to_string(&self, check_only: bool) -> String {
+        format!(
+            "line {}: {}",
+            self.line_number,
+            self.change_type.to_string(check_only)
+        )
+    }
 }

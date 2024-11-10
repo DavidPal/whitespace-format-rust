@@ -25,8 +25,8 @@ const VERTICAL_TAB: u8 = 0x0B; // The same as '\v' in C, C++, Java and Python.
 const FORM_FEED: u8 = 0x0C; // The same as '\f' in C, C++, Java and Python.
 
 /// A possible line ending.
-#[derive(PartialEq, Debug)]
-enum NewLineMarker {
+#[derive(PartialEq, Debug, Clone)]
+pub enum NewLineMarker {
     // Linux line ending is a single line feed character '\n'.
     Linux,
 
@@ -311,7 +311,10 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
             if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
                 changes.push(Change {
                     line_number: line_number,
-                    change_type: ChangeType::ReplacedNewLineMarker,
+                    change_type: ChangeType::ReplacedNewLineMarker(
+                        new_line_marker.clone(),
+                        output_new_line_marker.clone(),
+                    ),
                 });
                 writer.write_bytes(output_new_line_marker.to_bytes());
             } else {
@@ -357,7 +360,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
                     writer.write(SPACE);
                     changes.push(Change {
                         line_number: line_number,
-                        change_type: ChangeType::ReplacedNonstandardWhitespaceWithSpace,
+                        change_type: ChangeType::ReplacedNonstandardWhitespaceBySpace,
                     });
                 }
                 NonStandardWhitespaceReplacementMode::Remove => {
@@ -399,7 +402,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         last_end_of_line_including_eol_marker = last_end_of_non_empty_line_including_eol_marker;
         changes.push(Change {
             line_number: line_number,
-            change_type: ChangeType::RemovedEmptyLines,
+            change_type: ChangeType::RemovedEmptyLine,
         });
         writer.rewind(last_end_of_non_empty_line_including_eol_marker);
     }
@@ -434,8 +437,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     return changes;
 }
 
-pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) -> usize {
-    println!("Processing file '{}'...", file_path.display());
+pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) -> Vec<Change> {
     let input_data: Vec<u8> = fs::read(file_path).unwrap_or_else(|_error| {
         die(Error::CannotReadFile(file_path.display().to_string()));
     });
@@ -452,12 +454,7 @@ pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) ->
         })
     }
 
-    println!("{} changes", changes.len());
-    for change in &changes {
-        println!("Line {}: {}", change.line_number, change.change_type);
-    }
-
-    return changes.len();
+    return changes;
 }
 
 #[cfg(test)]

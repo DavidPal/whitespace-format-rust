@@ -103,14 +103,23 @@ fn main() {
 
     // Process files one by one.
     let mut number_of_changed_files: usize = 0;
-    for file in &filtered_files {
-        let number_of_changes = core::process_file(
-            file,
+    for file_path in &filtered_files {
+        println!("Processing file '{}'...", file_path.display());
+        let changes = core::process_file(
+            file_path,
             &command_line_arguments.get_options(),
             command_line_arguments.check_only,
         );
-        if number_of_changes > 0 {
+
+        if !changes.is_empty() {
             number_of_changed_files += 1;
+        }
+
+        for change in changes {
+            println!(
+                "  ↳ {}",
+                change.to_string(command_line_arguments.check_only)
+            );
         }
     }
 
