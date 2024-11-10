@@ -1,11 +1,11 @@
-// Internal imports
-use super::cli::CommandLineArguments;
-use super::cli::NonStandardWhitespaceReplacementMode;
-use super::cli::OutputNewLineMarkerMode;
-use super::cli::TrivialFileReplacementMode;
-
 // Library imports
 use std::fmt;
+
+// Internal imports
+use crate::cli::CommandLineArguments;
+use crate::cli::NonStandardWhitespaceReplacementMode;
+use crate::cli::OutputNewLineMarkerMode;
+use crate::cli::TrivialFileReplacementMode;
 
 // ASCII codes of characters that we care about.
 // For efficiency, we encode the characters as unsigned bytes.

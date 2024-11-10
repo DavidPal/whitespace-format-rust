@@ -6,14 +6,13 @@ mod core;
 mod discover;
 mod error;
 
+// Library imports
+use clap::Parser;
+use std::fs;
+
 // Internal imports
 use cli::CommandLineArguments;
 use core::Change;
-
-// Library imports
-use clap::Parser;
-use discover::list_files;
-use std::fs;
 
 const FILE_NAME: &str = "README.md";
 
@@ -43,7 +42,9 @@ fn main() {
     let command_line_arguments: CommandLineArguments = CommandLineArguments::parse();
     dbg!(&command_line_arguments);
 
-    println!("{:?}", list_files(&command_line_arguments.paths, false));
+    let regex = discover::compile_regular_expression(command_line_arguments.exclude.as_str());
+    let files = discover::list_files(&command_line_arguments.paths, command_line_arguments.follow_symlinks);
+    let _filtered_files = discover::exclude_files(&files, &regex);
 
     // Print content of a file.
     let input_data: Vec<u8> = fs::read(&FILE_NAME).unwrap();
