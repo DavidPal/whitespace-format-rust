@@ -9,13 +9,9 @@ mod writer;
 
 // Library imports
 use clap::Parser;
-use std::fs;
 
 // Internal imports
 use crate::cli::CommandLineArguments;
-use crate::core::Change;
-
-const FILE_NAME: &str = "README.md";
 
 /// Command line utility for formatting whitespace in text files.
 ///
@@ -48,23 +44,13 @@ fn main() {
         &command_line_arguments.paths,
         command_line_arguments.follow_symlinks,
     );
-    let _filtered_files = discover::exclude_files(&files, &regex);
+    let filtered_files = discover::exclude_files(&files, &regex);
 
-    // Print content of a file.
-    let input_data: Vec<u8> = fs::read(&FILE_NAME).unwrap();
-    dbg!(String::from_utf8_lossy(&input_data));
-
-    let mut output_data = Vec::new();
-    let changes: Vec<Change> = core::process_file(
-        &input_data,
-        &command_line_arguments.get_options(),
-        &mut output_data,
-    );
-
-    println!("Number of changes {}", changes.len());
-    for change in changes {
-        println!("Line {}: {}", change.line_number, change.change_type);
+    for file in &filtered_files {
+        core::process_file(
+            file,
+            &command_line_arguments.get_options(),
+            command_line_arguments.check_only,
+        );
     }
-
-    dbg!(String::from_utf8_lossy(&output_data));
 }

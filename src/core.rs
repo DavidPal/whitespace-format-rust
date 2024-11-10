@@ -1,11 +1,16 @@
 // Library imports
 use std::fmt;
+use std::fs;
+use std::path::PathBuf;
 
 // Internal imports
 use crate::cli::CommandLineArguments;
 use crate::cli::NonStandardWhitespaceReplacementMode;
 use crate::cli::OutputNewLineMarkerMode;
 use crate::cli::TrivialFileReplacementMode;
+use crate::error::die;
+use crate::error::Error;
+use crate::writer::CountingWriter;
 use crate::writer::Writer;
 
 // ASCII codes of characters that we care about.
@@ -147,7 +152,7 @@ impl Options {
 }
 
 #[derive(PartialEq, Debug)]
-pub enum ChangeType {
+enum ChangeType {
     NewLineMarkerAddedToEndOfFile,
     NewLineMarkerRemovedFromEndOfFile,
     ReplacedNewLineMarker,
@@ -186,7 +191,7 @@ impl fmt::Display for ChangeType {
     }
 }
 
-pub struct Change {
+struct Change {
     pub line_number: usize,
     pub change_type: ChangeType,
 }
@@ -238,11 +243,7 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
     return NewLineMarker::Windows;
 }
 
-pub fn process_file<T: Writer>(
-    input_data: &[u8],
-    options: &Options,
-    writer: &mut T,
-) -> Vec<Change> {
+fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut T) -> Vec<Change> {
     // Figure out what new line marker to use when writing to the output buffer.
     let output_new_line_marker = match options.new_line_marker {
         OutputNewLineMarkerMode::Auto => find_most_common_new_line_marker(input_data),
@@ -476,6 +477,32 @@ pub fn process_file<T: Writer>(
     return changes;
 }
 
+pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) -> usize {
+    println!("Processing file '{}'...", file_path.display());
+    let input_data: Vec<u8> = fs::read(file_path).unwrap_or_else(|_error| {
+        die(Error::CannotReadFile(file_path.display().to_string()));
+    });
+
+    let mut counting_writer = CountingWriter::new();
+    let changes: Vec<Change> = modify_content(&input_data, options, &mut counting_writer);
+
+    if !check_only {
+        let mut output_writer = Vec::with_capacity(counting_writer.position());
+        modify_content(&input_data, options, &mut output_writer);
+
+        fs::write(file_path, output_writer).unwrap_or_else(|_error| {
+            die(Error::CannotWriteFile(file_path.display().to_string()));
+        })
+    }
+
+    println!("{} changes", changes.len());
+    for change in &changes {
+        println!("Line {}: {}", change.line_number, change.change_type);
+    }
+
+    return changes.len();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -525,112 +552,112 @@ mod tests {
     }
 
     #[test]
-    fn test_process_file_do_nothing() {
+    fn test_modify_content_do_nothing() {
         let options: Options = Options::new();
         let mut output = Vec::new();
-        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
+        let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  ");
         assert_eq!(changes.len(), 0);
     }
 
     #[test]
-    fn test_process_file_do_nothing_whitespace_only_file() {
+    fn test_modify_content_do_nothing_whitespace_only_file() {
         let options: Options = Options::new();
         let mut output = Vec::new();
-        let changes = process_file(b"  ", &options, &mut output);
+        let changes = modify_content(b"  ", &options, &mut output);
         assert_eq!(output, b"  ");
         assert_eq!(changes.len(), 0);
     }
 
     #[test]
-    fn test_process_file_do_nothing_empty_file() {
+    fn test_modify_content_do_nothing_empty_file() {
         let options: Options = Options::new();
         let mut output = Vec::new();
-        let changes = process_file(b"", &options, &mut output);
+        let changes = modify_content(b"", &options, &mut output);
         assert_eq!(output, b"");
         assert_eq!(changes.len(), 0);
     }
 
     #[test]
-    fn test_process_file_add_new_line_marker_auto() {
+    fn test_modify_content_add_new_line_marker_auto() {
         let options: Options = Options::new().add_new_line_marker_at_end_of_file();
         let mut output = Vec::new();
-        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
+        let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r");
         assert_eq!(changes.len(), 1);
     }
 
     #[test]
-    fn test_process_file_add_new_line_marker_linux() {
+    fn test_modify_content_add_new_line_marker_linux() {
         let options: Options = Options::new()
             .add_new_line_marker_at_end_of_file()
             .new_line_marker(OutputNewLineMarkerMode::Linux);
         let mut output = Vec::new();
-        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
+        let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \n");
         assert_eq!(changes.len(), 1);
     }
 
     #[test]
-    fn test_process_file_add_new_line_marker_macos() {
+    fn test_modify_content_add_new_line_marker_macos() {
         let options: Options = Options::new()
             .add_new_line_marker_at_end_of_file()
             .new_line_marker(OutputNewLineMarkerMode::MacOs);
         let mut output = Vec::new();
-        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
+        let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r");
         assert_eq!(changes.len(), 1);
     }
 
     #[test]
-    fn test_process_file_add_new_line_marker_windows() {
+    fn test_modify_content_add_new_line_marker_windows() {
         let options: Options = Options::new()
             .add_new_line_marker_at_end_of_file()
             .new_line_marker(OutputNewLineMarkerMode::Windows);
         let mut output = Vec::new();
-        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
+        let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r\n");
         assert_eq!(changes.len(), 1);
     }
 
     #[test]
-    fn test_process_file_normalize_new_line_markers_auto() {
+    fn test_modify_content_normalize_new_line_markers_auto() {
         let options: Options = Options::new().normalize_new_line_markers();
         let mut output = Vec::new();
-        let changes = process_file(b"hello\r\n\rworld  \r\n", &options, &mut output);
+        let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\n\r\nworld  \r\n");
         assert_eq!(changes.len(), 1);
     }
 
     #[test]
-    fn test_process_file_normalize_new_line_markers_linux() {
+    fn test_modify_content_normalize_new_line_markers_linux() {
         let options: Options = Options::new()
             .normalize_new_line_markers()
             .new_line_marker(OutputNewLineMarkerMode::Linux);
         let mut output = Vec::new();
-        let changes = process_file(b"hello\r\n\rworld  \r\n", &options, &mut output);
+        let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\n\nworld  \n");
         assert_eq!(changes.len(), 3);
     }
 
     #[test]
-    fn test_process_file_normalize_new_line_markers_macos() {
+    fn test_modify_content_normalize_new_line_markers_macos() {
         let options: Options = Options::new()
             .normalize_new_line_markers()
             .new_line_marker(OutputNewLineMarkerMode::MacOs);
         let mut output = Vec::new();
-        let changes = process_file(b"hello\r\n\rworld  \r\n", &options, &mut output);
+        let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\rworld  \r");
         assert_eq!(changes.len(), 2);
     }
 
     #[test]
-    fn test_process_file_normalize_new_line_markers_windows() {
+    fn test_modify_content_normalize_new_line_markers_windows() {
         let options: Options = Options::new()
             .normalize_new_line_markers()
             .new_line_marker(OutputNewLineMarkerMode::Windows);
         let mut output = Vec::new();
-        let changes = process_file(b"hello\r\n\rworld  \r\n", &options, &mut output);
+        let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\n\r\nworld  \r\n");
         assert_eq!(changes.len(), 1);
     }
