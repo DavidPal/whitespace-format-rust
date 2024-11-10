@@ -56,6 +56,8 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
         }
     }
 
+    files.sort_unstable();
+    files.dedup();
     return files;
 }
 
