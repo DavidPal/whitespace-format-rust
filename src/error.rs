@@ -39,3 +39,53 @@ pub fn die(error: Error) -> ! {
     println!("{}", error.to_string());
     process::exit(1);
 }
+
+#[allow(dead_code)]
+pub trait ErrorReporter {
+    fn record(&mut self, error: Error);
+    fn report_all_errors(&self);
+}
+
+#[allow(dead_code)]
+pub struct DyingErrorReporter;
+
+#[allow(dead_code)]
+impl DyingErrorReporter {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[allow(dead_code)]
+impl ErrorReporter for DyingErrorReporter {
+    fn record(&mut self, error: Error) {
+        die(error);
+    }
+    fn report_all_errors(&self) {
+        panic!();
+    }
+}
+
+#[allow(dead_code)]
+pub struct BufferingErrorReporter {
+    pub errors: Vec<Error>,
+}
+
+#[allow(dead_code)]
+impl BufferingErrorReporter {
+    pub fn new() -> Self {
+        Self { errors: vec![] }
+    }
+}
+
+#[allow(dead_code)]
+impl ErrorReporter for BufferingErrorReporter {
+    fn record(&mut self, error: Error) {
+        self.errors.push(error);
+    }
+    fn report_all_errors(&self) {
+        for error in &self.errors {
+            println!("{}", error.to_string());
+        }
+    }
+}

@@ -438,23 +438,23 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
 }
 
 pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) -> Vec<Change> {
-    let input_data: Vec<u8> = fs::read(file_path).unwrap_or_else(|_error| {
-        die(Error::CannotReadFile(file_path.display().to_string()));
-    });
-
-    let mut counting_writer = CountingWriter::new();
-    let changes: Vec<Change> = modify_content(&input_data, options, &mut counting_writer);
-
-    if !check_only {
-        let mut output_writer = Vec::with_capacity(counting_writer.position());
-        modify_content(&input_data, options, &mut output_writer);
-
-        fs::write(file_path, output_writer).unwrap_or_else(|_error| {
-            die(Error::CannotWriteFile(file_path.display().to_string()));
-        })
+    match fs::read(file_path) {
+        Err(_) => {
+            die(Error::CannotReadFile(file_path.display().to_string()));
+        }
+        Ok(input_data) => {
+            let mut counting_writer = CountingWriter::new();
+            let changes: Vec<Change> = modify_content(&input_data, options, &mut counting_writer);
+            if !check_only {
+                let mut output_writer = Vec::with_capacity(counting_writer.position());
+                modify_content(&input_data, options, &mut output_writer);
+                if let Err(_) = fs::write(file_path, output_writer) {
+                    die(Error::CannotWriteFile(file_path.display().to_string()));
+                };
+            }
+            return changes;
+        }
     }
-
-    return changes;
 }
 
 #[cfg(test)]
