@@ -47,7 +47,7 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
 
             for inner_path in inner_paths {
                 let inner_path = inner_path.unwrap_or_else(|_error| {
-                    die(Error::FailedToReadDirectory(
+                    die(Error::FailedToReadDirectoryEntry(
                         directory.display().to_string(),
                     ));
                 });

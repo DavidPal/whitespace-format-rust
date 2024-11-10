@@ -12,11 +12,6 @@ pub trait Writer {
     // Rewinds to a previous position.
     fn rewind(&mut self, previous_position: usize);
 
-    /// Rewinds to position zero.
-    fn reset(&mut self) {
-        self.rewind(0);
-    }
-
     /// Gets the current position.
     fn position(&self) -> usize;
 }
@@ -51,8 +46,8 @@ impl CountingWriter {
     }
 }
 
-#[allow(unused_variables)]
 impl Writer for CountingWriter {
+    #[allow(unused_variables)]
     fn write(&mut self, byte: u8) {
         self.position += 1;
     }

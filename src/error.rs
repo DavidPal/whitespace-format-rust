@@ -5,7 +5,6 @@ pub enum Error {
     FileNotFound(String),
     FailedToReadDirectory(String),
     FailedToReadDirectoryEntry(String),
-    FailedToReadFile(String),
     InvalidRegularExpression(String),
     CannotReadFile(String),
     CannotWriteFile(String),
@@ -21,7 +20,6 @@ impl Error {
             Error::FailedToReadDirectoryEntry(directory_path) => {
                 format!("Failed to read an entry in directory {}", directory_path)
             }
-            Error::FailedToReadFile(file_path) => format!("Failed to read file {}", file_path),
             Error::InvalidRegularExpression(regular_expression) => {
                 format!("Failed to read file {}", regular_expression)
             }

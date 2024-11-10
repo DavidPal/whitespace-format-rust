@@ -79,6 +79,7 @@ impl CommandLineArguments {
     }
 }
 
+#[allow(dead_code)]
 impl Options {
     fn new() -> Self {
         Self {
