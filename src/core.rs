@@ -6,6 +6,7 @@ use crate::cli::CommandLineArguments;
 use crate::cli::NonStandardWhitespaceReplacementMode;
 use crate::cli::OutputNewLineMarkerMode;
 use crate::cli::TrivialFileReplacementMode;
+use crate::writer::Writer;
 
 // ASCII codes of characters that we care about.
 // For efficiency, we encode the characters as unsigned bytes.
@@ -237,7 +238,11 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
     return NewLineMarker::Windows;
 }
 
-pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
+pub fn process_file<T: Writer>(
+    input_data: &[u8],
+    options: &Options,
+    writer: &mut T,
+) -> Vec<Change> {
     // Figure out what new line marker to use when writing to the output buffer.
     let output_new_line_marker = match options.new_line_marker {
         OutputNewLineMarkerMode::Auto => find_most_common_new_line_marker(input_data),
@@ -249,41 +254,37 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
     // Handle empty file.
     if input_data.len() == 0 {
         return match options.normalize_empty_files {
-            TrivialFileReplacementMode::Empty | TrivialFileReplacementMode::Ignore => {
-                (Vec::new(), Vec::new())
-            }
-            TrivialFileReplacementMode::OneLine => (
-                Vec::from(output_new_line_marker.to_bytes()),
+            TrivialFileReplacementMode::Empty | TrivialFileReplacementMode::Ignore => Vec::new(),
+            TrivialFileReplacementMode::OneLine => {
+                writer.write_bytes(output_new_line_marker.to_bytes());
                 Vec::from([Change {
                     line_number: 1,
                     change_type: ChangeType::ReplacedEmptyFileWithOneLine,
-                }]),
-            ),
+                }])
+            }
         };
     }
 
     // Handle non-empty file consisting of whitespace only.
     if is_file_whitespace(input_data) {
         return match options.normalize_whitespace_only_files {
-            TrivialFileReplacementMode::Empty => (
-                Vec::new(),
-                Vec::from([Change {
-                    line_number: 1,
-                    change_type: ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile,
-                }]),
-            ),
-            TrivialFileReplacementMode::Ignore => (Vec::from(input_data), Vec::new()),
+            TrivialFileReplacementMode::Empty => Vec::from([Change {
+                line_number: 1,
+                change_type: ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile,
+            }]),
+            TrivialFileReplacementMode::Ignore => {
+                writer.write_bytes(input_data);
+                Vec::new()
+            }
             TrivialFileReplacementMode::OneLine => {
+                writer.write_bytes(output_new_line_marker.to_bytes());
                 if input_data == output_new_line_marker.to_bytes() {
-                    (Vec::from(output_new_line_marker.to_bytes()), Vec::new())
+                    Vec::new()
                 } else {
-                    (
-                        Vec::from(output_new_line_marker.to_bytes()),
-                        Vec::from([Change {
-                            line_number: 1,
-                            change_type: ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine,
-                        }]),
-                    )
+                    Vec::from([Change {
+                        line_number: 1,
+                        change_type: ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine,
+                    }])
                 }
             }
         };
@@ -291,13 +292,6 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
 
     // Index into the input buffer.
     let mut i: usize = 0;
-
-    // The output buffer.
-    // The output is expected to be about the same size as the input.
-    // If there are no changes, the output will be exactly the same as input.
-    // In order to avoid too many reallocations, reserve the capacity
-    // equal to the size of the input buffer.
-    let mut output_data: Vec<u8> = Vec::with_capacity(input_data.len());
 
     // List of changes between input and output.
     let mut changes: Vec<Change> = Vec::new();
@@ -343,29 +337,29 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
             }
 
             // Remove trailing whitespace
-            if options.remove_trailing_whitespace && last_non_whitespace < output_data.len() {
+            if options.remove_trailing_whitespace && last_non_whitespace < writer.position() {
                 changes.push(Change {
                     line_number: line_number,
                     change_type: ChangeType::RemovedTrailingWhitespace,
                 });
-                output_data.truncate(last_non_whitespace);
+                writer.rewind(last_non_whitespace);
             }
 
             // Determine if the last line is empty
-            let is_empty_line: bool = last_end_of_line_including_eol_marker == output_data.len();
+            let is_empty_line: bool = last_end_of_line_including_eol_marker == writer.position();
 
             // Add new line marker
-            last_end_of_line_excluding_eol_marker = output_data.len();
+            last_end_of_line_excluding_eol_marker = writer.position();
             if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
                 changes.push(Change {
                     line_number: line_number,
                     change_type: ChangeType::ReplacedNewLineMarker,
                 });
-                output_data.extend_from_slice(output_new_line_marker.to_bytes());
+                writer.write_bytes(output_new_line_marker.to_bytes());
             } else {
-                output_data.extend_from_slice(new_line_marker.to_bytes());
+                writer.write_bytes(new_line_marker.to_bytes());
             }
-            last_end_of_line_including_eol_marker = output_data.len();
+            last_end_of_line_including_eol_marker = writer.position();
 
             // Update position of last non-empty line.
             if !is_empty_line {
@@ -377,17 +371,17 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
             }
             line_number += 1;
         } else if input_data[i] == SPACE {
-            output_data.push(input_data[i]);
+            writer.write(input_data[i]);
         } else if input_data[i] == TAB {
             if options.replace_tabs_with_spaces < 0 {
-                output_data.push(input_data[i]);
+                writer.write(input_data[i]);
             } else if options.replace_tabs_with_spaces > 0 {
                 changes.push(Change {
                     line_number: line_number,
                     change_type: ChangeType::ReplacedTabWithSpaces,
                 });
                 for _ in 0..options.replace_tabs_with_spaces {
-                    output_data.push(SPACE);
+                    writer.write(SPACE);
                 }
             } else {
                 // Remove the tab character.
@@ -399,10 +393,10 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
         } else if input_data[i] == VERTICAL_TAB || input_data[i] == FORM_FEED {
             match options.normalize_non_standard_whitespace {
                 NonStandardWhitespaceReplacementMode::Ignore => {
-                    output_data.push(input_data[i]);
+                    writer.write(input_data[i]);
                 }
                 NonStandardWhitespaceReplacementMode::ReplaceWithSpace => {
-                    output_data.push(SPACE);
+                    writer.write(SPACE);
                     changes.push(Change {
                         line_number: line_number,
                         change_type: ChangeType::ReplacedNonstandardWhitespaceWithSpace,
@@ -417,8 +411,8 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
                 }
             }
         } else {
-            output_data.push(input_data[i]);
-            last_non_whitespace = output_data.len();
+            writer.write(input_data[i]);
+            last_non_whitespace = writer.position();
         }
 
         // Move to the next byte
@@ -427,20 +421,20 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
 
     // Remove trailing whitespace from the last line.
     if options.remove_trailing_whitespace
-        && last_end_of_line_including_eol_marker < output_data.len()
-        && last_non_whitespace < output_data.len()
+        && last_end_of_line_including_eol_marker < writer.position()
+        && last_non_whitespace < writer.position()
     {
         changes.push(Change {
             line_number: line_number,
             change_type: ChangeType::RemovedTrailingWhitespace,
         });
-        output_data.truncate(last_non_whitespace);
+        writer.rewind(last_non_whitespace);
     }
 
     // Remove trailing empty lines.
     if options.remove_trailing_empty_lines
-        && last_end_of_line_including_eol_marker == output_data.len()
-        && last_end_of_non_empty_line_including_eol_marker < output_data.len()
+        && last_end_of_line_including_eol_marker == writer.position()
+        && last_end_of_non_empty_line_including_eol_marker < writer.position()
     {
         line_number = last_non_empty_line_number + 1;
         last_end_of_line_excluding_eol_marker = last_end_of_non_empty_line_excluding_eol_marker;
@@ -449,26 +443,26 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
             line_number: line_number,
             change_type: ChangeType::RemovedEmptyLines,
         });
-        output_data.truncate(last_end_of_non_empty_line_including_eol_marker);
+        writer.rewind(last_end_of_non_empty_line_including_eol_marker);
     }
 
     // Add new line marker at the end of the file
     if options.add_new_line_marker_at_end_of_file
-        && last_end_of_line_including_eol_marker < output_data.len()
+        && last_end_of_line_including_eol_marker < writer.position()
     {
-        last_end_of_line_excluding_eol_marker = output_data.len();
+        last_end_of_line_excluding_eol_marker = writer.position();
         changes.push(Change {
             line_number: line_number,
             change_type: ChangeType::NewLineMarkerAddedToEndOfFile,
         });
-        output_data.extend_from_slice(output_new_line_marker.to_bytes());
-        last_end_of_line_including_eol_marker = output_data.len();
+        writer.write_bytes(output_new_line_marker.to_bytes());
+        last_end_of_line_including_eol_marker = writer.position();
         line_number += 1;
     }
 
     // Remove new line marker from the end of the file
     if options.remove_new_line_marker_from_end_of_file
-        && last_end_of_line_including_eol_marker == output_data.len()
+        && last_end_of_line_including_eol_marker == writer.position()
         && line_number >= 2
     {
         line_number -= 1;
@@ -476,10 +470,10 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
             line_number: line_number,
             change_type: ChangeType::NewLineMarkerRemovedFromEndOfFile,
         });
-        output_data.truncate(last_end_of_line_excluding_eol_marker);
+        writer.rewind(last_end_of_line_excluding_eol_marker);
     }
 
-    return (output_data, changes);
+    return changes;
 }
 
 #[cfg(test)]
@@ -533,7 +527,8 @@ mod tests {
     #[test]
     fn test_process_file_do_nothing() {
         let options: Options = Options::new();
-        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  ");
         assert_eq!(changes.len(), 0);
     }
@@ -541,7 +536,8 @@ mod tests {
     #[test]
     fn test_process_file_do_nothing_whitespace_only_file() {
         let options: Options = Options::new();
-        let (output, changes) = process_file(b"  ", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"  ", &options, &mut output);
         assert_eq!(output, b"  ");
         assert_eq!(changes.len(), 0);
     }
@@ -549,7 +545,8 @@ mod tests {
     #[test]
     fn test_process_file_do_nothing_empty_file() {
         let options: Options = Options::new();
-        let (output, changes) = process_file(b"", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"", &options, &mut output);
         assert_eq!(output, b"");
         assert_eq!(changes.len(), 0);
     }
@@ -557,7 +554,8 @@ mod tests {
     #[test]
     fn test_process_file_add_new_line_marker_auto() {
         let options: Options = Options::new().add_new_line_marker_at_end_of_file();
-        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r");
         assert_eq!(changes.len(), 1);
     }
@@ -567,7 +565,8 @@ mod tests {
         let options: Options = Options::new()
             .add_new_line_marker_at_end_of_file()
             .new_line_marker(OutputNewLineMarkerMode::Linux);
-        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \n");
         assert_eq!(changes.len(), 1);
     }
@@ -577,7 +576,8 @@ mod tests {
         let options: Options = Options::new()
             .add_new_line_marker_at_end_of_file()
             .new_line_marker(OutputNewLineMarkerMode::MacOs);
-        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r");
         assert_eq!(changes.len(), 1);
     }
@@ -587,7 +587,8 @@ mod tests {
         let options: Options = Options::new()
             .add_new_line_marker_at_end_of_file()
             .new_line_marker(OutputNewLineMarkerMode::Windows);
-        let (output, changes) = process_file(b"hello\r\n\rworld  ", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r\n");
         assert_eq!(changes.len(), 1);
     }
@@ -595,7 +596,8 @@ mod tests {
     #[test]
     fn test_process_file_normalize_new_line_markers_auto() {
         let options: Options = Options::new().normalize_new_line_markers();
-        let (output, changes) = process_file(b"hello\r\n\rworld  \r\n", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\n\r\nworld  \r\n");
         assert_eq!(changes.len(), 1);
     }
@@ -605,7 +607,8 @@ mod tests {
         let options: Options = Options::new()
             .normalize_new_line_markers()
             .new_line_marker(OutputNewLineMarkerMode::Linux);
-        let (output, changes) = process_file(b"hello\r\n\rworld  \r\n", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\n\nworld  \n");
         assert_eq!(changes.len(), 3);
     }
@@ -615,7 +618,8 @@ mod tests {
         let options: Options = Options::new()
             .normalize_new_line_markers()
             .new_line_marker(OutputNewLineMarkerMode::MacOs);
-        let (output, changes) = process_file(b"hello\r\n\rworld  \r\n", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\rworld  \r");
         assert_eq!(changes.len(), 2);
     }
@@ -625,7 +629,8 @@ mod tests {
         let options: Options = Options::new()
             .normalize_new_line_markers()
             .new_line_marker(OutputNewLineMarkerMode::Windows);
-        let (output, changes) = process_file(b"hello\r\n\rworld  \r\n", &options);
+        let mut output = Vec::new();
+        let changes = process_file(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\n\r\nworld  \r\n");
         assert_eq!(changes.len(), 1);
     }

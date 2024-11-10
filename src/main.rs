@@ -12,8 +12,8 @@ use clap::Parser;
 use std::fs;
 
 // Internal imports
-use cli::CommandLineArguments;
-use core::Change;
+use crate::cli::CommandLineArguments;
+use crate::core::Change;
 
 const FILE_NAME: &str = "README.md";
 
@@ -54,8 +54,12 @@ fn main() {
     let input_data: Vec<u8> = fs::read(&FILE_NAME).unwrap();
     dbg!(String::from_utf8_lossy(&input_data));
 
-    let (output_data, changes): (Vec<u8>, Vec<Change>) =
-        core::process_file(&input_data, &command_line_arguments.get_options());
+    let mut output_data = Vec::new();
+    let changes: Vec<Change> = core::process_file(
+        &input_data,
+        &command_line_arguments.get_options(),
+        &mut output_data,
+    );
 
     println!("Number of changes {}", changes.len());
     for change in changes {

@@ -12,6 +12,11 @@ pub trait Writer {
     // Rewinds to a previous position.
     fn rewind(&mut self, previous_position: usize);
 
+    /// Rewinds to position zero.
+    fn reset(&mut self) {
+        self.rewind(0);
+    }
+
     /// Gets the current position.
     fn position(&self) -> usize;
 }
