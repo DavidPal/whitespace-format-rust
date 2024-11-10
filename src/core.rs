@@ -190,6 +190,7 @@ pub struct Change {
     pub change_type: ChangeType,
 }
 
+/// Determines if a file consists of only whitespace.
 fn is_file_whitespace(input_data: &[u8]) -> bool {
     for char in input_data {
         match *char {
@@ -203,6 +204,37 @@ fn is_file_whitespace(input_data: &[u8]) -> bool {
         };
     }
     return true;
+}
+
+/// Computes the most common new line marker based on content of the file.
+/// If there are ties, prefer Linux to MacOS to Windows.
+/// If there are no new line markers, return Linux.
+fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
+    let mut linux_count: usize = 0;
+    let mut macos_count: usize = 0;
+    let mut windows_count: usize = 0;
+    let mut i: usize = 0;
+
+    while i < input.len() {
+        if input[i] == CARRIAGE_RETURN {
+            if i < input.len() - 1 && input[i + 1] == LINE_FEED {
+                windows_count += 1;
+                i += 1;
+            } else {
+                macos_count += 1;
+            }
+        } else if input[i] == LINE_FEED {
+            linux_count += 1;
+        }
+        i += 1;
+    }
+
+    if linux_count >= macos_count && linux_count >= windows_count {
+        return NewLineMarker::Linux;
+    } else if macos_count >= windows_count {
+        return NewLineMarker::MacOs;
+    }
+    return NewLineMarker::Windows;
 }
 
 pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Change>) {
@@ -448,37 +480,6 @@ pub fn process_file(input_data: &[u8], options: &Options) -> (Vec<u8>, Vec<Chang
     }
 
     return (output_data, changes);
-}
-
-/// Computes the most common new line marker based on content of the file.
-/// If there are ties, prefer Linux to MacOS to Windows.
-/// If there are no new line markers, return Linux.
-fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
-    let mut linux_count: usize = 0;
-    let mut macos_count: usize = 0;
-    let mut windows_count: usize = 0;
-    let mut i: usize = 0;
-
-    while i < input.len() {
-        if input[i] == CARRIAGE_RETURN {
-            if i < input.len() - 1 && input[i + 1] == LINE_FEED {
-                windows_count += 1;
-                i += 1;
-            } else {
-                macos_count += 1;
-            }
-        } else if input[i] == LINE_FEED {
-            linux_count += 1;
-        }
-        i += 1;
-    }
-
-    if linux_count >= macos_count && linux_count >= windows_count {
-        return NewLineMarker::Linux;
-    } else if macos_count >= windows_count {
-        return NewLineMarker::MacOs;
-    }
-    return NewLineMarker::Windows;
 }
 
 #[cfg(test)]
