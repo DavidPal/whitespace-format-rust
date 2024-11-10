@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 
-// Internal modules
+// Modules
 mod cli;
 mod core;
 mod discover;
-mod exit;
+mod error;
 
-// Module imports
+// Internal imports
 use cli::CommandLineArguments;
 use core::Change;
 

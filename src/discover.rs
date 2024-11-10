@@ -1,4 +1,9 @@
-use super::exit::{die, ExitCode};
+// Internal imports
+use super::error::{die, Error};
+
+// Library imports
+use regex;
+use regex::Regex;
 use std::path::PathBuf;
 
 /// Lists all files in a collection of paths (directories or files).
@@ -11,10 +16,7 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
 
         for path in paths.iter() {
             if !path.exists() {
-                die(
-                    &format!("Path '{}' does not exist.", path.display()),
-                    ExitCode::FileNotFound,
-                )
+                die(Error::FileNotFound(path.display().to_string()))
             }
 
             if path.is_symlink() && !follow_symlinks {
@@ -38,21 +40,16 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
 
         for directory in directories.iter() {
             let inner_paths = directory.read_dir().unwrap_or_else(|_error| {
-                die(
-                    &format!("Failed to read directory: {}", directory.display()),
-                    ExitCode::FailedToReadDirectory,
-                );
+                die(Error::FailedToReadDirectory(
+                    directory.display().to_string(),
+                ));
             });
 
             for inner_path in inner_paths {
                 let inner_path = inner_path.unwrap_or_else(|_error| {
-                    die(
-                        &format!(
-                            "Failed to read an entry in directory: {}",
-                            directory.display()
-                        ),
-                        ExitCode::FailedToReadDirectoryEntry,
-                    );
+                    die(Error::FailedToReadDirectory(
+                        directory.display().to_string(),
+                    ));
                 });
                 paths.push(inner_path.path());
             }
@@ -60,4 +57,14 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
     }
 
     return files;
+}
+
+pub fn compile_regular_expression(regular_expression: &str) -> Regex {
+    if let Ok(regex) = Regex::new(regular_expression) {
+        return regex;
+    } else {
+        die(Error::InvalidRegularExpression(
+            regular_expression.to_string(),
+        ));
+    }
 }

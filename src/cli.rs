@@ -1,6 +1,8 @@
+// Library imports
 use clap;
 use std::path::PathBuf;
 
+/// A regular expression that does not match any string.
 const UNMATCHABLE_REGEX: &str = "$.";
 
 /// New line marker that should be used in the output files.
