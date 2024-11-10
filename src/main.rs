@@ -5,6 +5,7 @@ mod cli;
 mod core;
 mod discover;
 mod error;
+mod writer;
 
 // Library imports
 use clap::Parser;
