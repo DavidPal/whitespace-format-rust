@@ -43,7 +43,10 @@ fn main() {
     dbg!(&command_line_arguments);
 
     let regex = discover::compile_regular_expression(command_line_arguments.exclude.as_str());
-    let files = discover::list_files(&command_line_arguments.paths, command_line_arguments.follow_symlinks);
+    let files = discover::list_files(
+        &command_line_arguments.paths,
+        command_line_arguments.follow_symlinks,
+    );
     let _filtered_files = discover::exclude_files(&files, &regex);
 
     // Print content of a file.
