@@ -214,7 +214,7 @@ fn is_file_whitespace(input_data: &[u8]) -> bool {
 }
 
 /// Computes the most common new line marker based on content of the file.
-/// If there are ties, prefer Linux to MacOS to Windows.
+/// If there are ties, prefer Linux to Windows to MacOS.
 /// If there are no new line markers, return Linux.
 fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
     let mut linux_count: usize = 0;
@@ -236,12 +236,12 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
         i += 1;
     }
 
-    if linux_count >= macos_count && linux_count >= windows_count {
-        return NewLineMarker::Linux;
-    } else if macos_count >= windows_count {
+    if macos_count > windows_count && macos_count > linux_count {
         return NewLineMarker::MacOs;
+    } else if windows_count > linux_count {
+        return NewLineMarker::Windows;
     }
-    return NewLineMarker::Windows;
+    return NewLineMarker::Linux;
 }
 
 fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut T) -> Vec<Change> {
@@ -584,7 +584,7 @@ mod tests {
         let options: Options = Options::new().add_new_line_marker_at_end_of_file();
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
-        assert_eq!(output, b"hello\r\n\rworld  \r");
+        assert_eq!(output, b"hello\r\n\rworld  \r\n");
         assert_eq!(changes.len(), 1);
     }
 
