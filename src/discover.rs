@@ -7,27 +7,22 @@ use std::path::PathBuf;
 use crate::error::{die, Error};
 
 /// Lists all files in a collection of paths (directories or files).
-pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
+pub fn discover_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> (Vec<PathBuf>, Vec<Error>) {
     let mut paths: Vec<PathBuf> = paths.clone();
     let mut files: Vec<PathBuf> = Vec::new();
+    let mut errors: Vec<Error> = Vec::new();
 
     loop {
         let mut directories: Vec<PathBuf> = Vec::new();
 
         for path in paths.iter() {
             if !path.exists() {
-                die(Error::FileNotFound(path.display().to_string()))
-            }
-
-            if path.is_symlink() && !follow_symlinks {
+                errors.push(Error::FileNotFound(path.display().to_string()));
+            } else if path.is_symlink() && !follow_symlinks {
                 continue;
-            }
-
-            if path.is_file() {
+            } else if path.is_file() {
                 files.push(path.clone());
-            }
-
-            if path.is_dir() {
+            } else if path.is_dir() {
                 directories.push(path.clone());
             }
         }
@@ -39,26 +34,27 @@ pub fn list_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
         paths.clear();
 
         for directory in directories.iter() {
-            let inner_paths = directory.read_dir().unwrap_or_else(|_error| {
-                die(Error::FailedToReadDirectory(
+            if let Ok(inner_paths) = directory.read_dir() {
+                for inner_path in inner_paths {
+                    if let Ok(inner_path) = inner_path {
+                        paths.push(inner_path.path());
+                    } else {
+                        errors.push(Error::FailedToReadDirectoryEntry(
+                            directory.display().to_string(),
+                        ));
+                    }
+                }
+            } else {
+                errors.push(Error::FailedToReadDirectory(
                     directory.display().to_string(),
                 ));
-            });
-
-            for inner_path in inner_paths {
-                let inner_path = inner_path.unwrap_or_else(|_error| {
-                    die(Error::FailedToReadDirectoryEntry(
-                        directory.display().to_string(),
-                    ));
-                });
-                paths.push(inner_path.path());
             }
         }
     }
 
     files.sort_unstable();
     files.dedup();
-    return files;
+    return (files, errors);
 }
 
 pub fn compile_regular_expression(regular_expression: &str) -> Regex {

@@ -92,13 +92,20 @@ fn main() {
     let regex = discover::compile_regular_expression(command_line_arguments.exclude.as_str());
 
     // Discover all files given on the command line.
-    let files = discover::list_files(
+    let (all_files, errors) = discover::discover_files(
         &command_line_arguments.paths,
         command_line_arguments.follow_symlinks,
     );
 
+    if !errors.is_empty() {
+        for error in errors {
+            println!("{}", error.to_string());
+        }
+        process::exit(1);
+    }
+
     // Exclude files that match the --excluded regular expression.
-    let filtered_files = discover::exclude_files(&files, &regex);
+    let filtered_files = discover::exclude_files(&all_files, &regex);
     println!("Processing {} file(s)...", filtered_files.len());
 
     // Process files one by one.
