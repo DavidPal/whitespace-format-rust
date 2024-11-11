@@ -80,9 +80,14 @@ pub fn print_changes(file_path: &PathBuf, changes: Vec<Change>, check_only: bool
     } else {
         "Reformatted"
     };
-    println!("{} file '{}':", check_only_word, file_path.display());
+    println!(
+        "{}{}{}",
+        check_only_word.red().bold(),
+        " file ".red().bold(),
+        file_path.display().to_string().white().bold()
+    );
     for change in changes {
-        println!("  ↳ {}", change.to_string(check_only));
+        println!("  ↳ {}", change.to_string(check_only).blue());
     }
 }
 
@@ -101,7 +106,7 @@ pub fn set_colored_output_mode(colored_output_mode: &ColoredOutputMode) {
 ///  1. Add a new line marker at the end of the file if it is missing.
 ///  2. Remove empty lines from the end of the file.
 ///  3. Remove whitespace from the end of each line.
-///  4. Normalize new line markers to Linux, MacOS, or Windows.
+///  4. Normalize new line markers to Linux, Windows or MacOS.
 ///  4. Replace tabs with spaces.
 ///  5. Replace files consisting of only whitespace with zero bytes.
 ///
@@ -114,7 +119,17 @@ pub fn set_colored_output_mode(colored_output_mode: &ColoredOutputMode) {
 ///
 /// Sample usage:
 ///
-/// TODO
+///    whitespace-format \
+///         --check-only \
+///         --remove-trailing-whitespace \
+///         --remove-trailing-empty-lines \
+///         --normalize-whitespace-only-files=empty \
+///         my_files/
+///
+///
+/// To see all available options, run:
+///
+///    whitespace-format --help
 ///
 fn main() {
     let command_line_arguments: CommandLineArguments = CommandLineArguments::parse();
