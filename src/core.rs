@@ -901,19 +901,23 @@ mod tests {
         assert_eq!(output, b"hello");
         assert_eq!(changes, vec![Change::new(1, ChangeType::RemovedTab)]);
     }
-    
+
     #[test]
     fn test_modify_content_replace_tabs_with_spaces_3() {
         let options: Options = Options::new().replace_tabs_with_spaces(3);
         let mut output = Vec::new();
         let changes = modify_content(b"\thello", &options, &mut output);
         assert_eq!(output, b"   hello");
-        assert_eq!(changes, vec![Change::new(1, ChangeType::ReplacedTabWithSpaces)]);
+        assert_eq!(
+            changes,
+            vec![Change::new(1, ChangeType::ReplacedTabWithSpaces)]
+        );
     }
 
     #[test]
     fn test_modify_content_normalize_non_standard_whitespace_ignore() {
-        let options: Options = Options::new().normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::Ignore);
+        let options: Options = Options::new()
+            .normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::Ignore);
         let mut output = Vec::new();
         let changes = modify_content(b"\x0B\x0Chello\t ", &options, &mut output);
         assert_eq!(output, b"\x0B\x0Chello\t ");
@@ -922,26 +926,34 @@ mod tests {
 
     #[test]
     fn test_modify_content_normalize_non_standard_whitespace_replace_with_space() {
-        let options: Options = Options::new().normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::ReplaceWithSpace);
+        let options: Options = Options::new().normalize_non_standard_whitespace(
+            NonStandardWhitespaceReplacementMode::ReplaceWithSpace,
+        );
         let mut output = Vec::new();
         let changes = modify_content(b"\x0B\x0Chello\t ", &options, &mut output);
         assert_eq!(output, b"  hello\t ");
-        assert_eq!(changes, vec![
-            Change::new(1, ChangeType::ReplacedNonstandardWhitespaceBySpace),
-            Change::new(1, ChangeType::ReplacedNonstandardWhitespaceBySpace),
-        ]);
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(1, ChangeType::ReplacedNonstandardWhitespaceBySpace),
+                Change::new(1, ChangeType::ReplacedNonstandardWhitespaceBySpace),
+            ]
+        );
     }
 
     #[test]
     fn test_modify_content_normalize_non_standard_whitespace_remove() {
-        let options: Options = Options::new().normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::Remove);
+        let options: Options = Options::new()
+            .normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::Remove);
         let mut output = Vec::new();
         let changes = modify_content(b"\x0B\x0Chello\t ", &options, &mut output);
         assert_eq!(output, b"hello\t ");
-        assert_eq!(changes, vec![
-            Change::new(1, ChangeType::RemovedNonstandardWhitespace),
-            Change::new(1, ChangeType::RemovedNonstandardWhitespace),
-        ]);
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(1, ChangeType::RemovedNonstandardWhitespace),
+                Change::new(1, ChangeType::RemovedNonstandardWhitespace),
+            ]
+        );
     }
-
 }
