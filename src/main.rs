@@ -44,7 +44,7 @@ fn print_change_report_and_exit(
     }
 
     if number_of_changed_files > 0 && number_of_unchanged_files > 0 {
-        print!(",");
+        print!(", ");
     }
 
     if number_of_unchanged_files > 0 {
