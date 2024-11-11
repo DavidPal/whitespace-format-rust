@@ -727,7 +727,7 @@ mod tests {
     fn test_modify_content_remove_trailing_whitespace_3() {
         let options: Options = Options::new().remove_trailing_whitespace();
         let mut output = Vec::new();
-        let changes = modify_content(b"hello  \r\n   \rworld   ", &options, &mut output);
+        let changes = modify_content(b"hello \t  \r\n \t  \rworld   ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld");
         assert_eq!(
             changes,
