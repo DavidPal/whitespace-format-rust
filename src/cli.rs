@@ -1,10 +1,8 @@
-// Internal imports
-use crate::error::print_error;
-
 // Library imports
 use clap;
+use clap::error::ErrorKind;
+use clap::CommandFactory;
 use std::path::PathBuf;
-use std::process;
 
 /// A regular expression that does not match any string.
 pub const UNMATCHABLE_REGEX: &str = "$.";
@@ -72,8 +70,8 @@ pub enum TrivialFileReplacementMode {
 #[derive(clap::Parser, Debug)]
 #[command(
     version,
-    about = "Whitespace formatter and format checker for text files and source code files.",
-    long_about = "Whitespace formatter and format checker for text files and source code files."
+    about = "Whitespace formatter and linter for text files and source code files.",
+    long_about = "Whitespace formatter and linter for text files and source code files."
 )]
 pub struct CommandLineArguments {
     #[arg(
@@ -170,7 +168,10 @@ pub struct CommandLineArguments {
     #[arg(long,
     value_enum,
     default_value_t = TrivialFileReplacementMode::Ignore,
-    help = "Replace files consisting of whitespace only.")]
+    help = "Replace files consisting of whitespace only. \
+    The combination `--normalize-whitespace-only-files=empty` and \
+    `--normalize-empty-files=one-line` is not allowed, since it would lead to \
+    behavior that is not idempotent.")]
     pub normalize_whitespace_only_files: TrivialFileReplacementMode,
 
     #[arg(long,
@@ -199,8 +200,10 @@ impl CommandLineArguments {
         if self.normalize_whitespace_only_files == TrivialFileReplacementMode::Empty
             && self.normalize_empty_files == TrivialFileReplacementMode::OneLine
         {
-            print_error("the argument '--normalize-whitespace-only-files=empty' cannot be used with '--normalize-empty-files=one-line'");
-            process::exit(1);
+            CommandLineArguments::command().error(
+                ErrorKind::ArgumentConflict,
+                "the argument '--normalize-whitespace-only-files=empty' cannot be used with '--normalize-empty-files=one-line'"
+            ).exit();
         }
     }
 }

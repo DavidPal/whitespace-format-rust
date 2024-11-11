@@ -2,7 +2,7 @@
 
 [![Build, lint and test](https://github.com/DavidPal/whitespace-format-rust/actions/workflows/build.yaml/badge.svg)](https://github.com/DavidPal/whitespace-format-rust/actions/workflows/build.yaml)
 
-Linter and formatter for source code files and text files.
+Whitespace formatter and linter for text files and source code files.
 
 The purpose of this tool is to normalize source code files (e.g. Python, Java,
 C/C++, Rust, Ruby, Go, JavaScript, etc.) and text files (HTML, JSON, YAML, CSV,
