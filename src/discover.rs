@@ -4,7 +4,8 @@ use regex::Regex;
 use std::path::PathBuf;
 
 // Internal imports
-use crate::error::{die, Error};
+use crate::error::die;
+use crate::error::Error;
 
 /// Lists all files in a collection of paths (directories or files).
 pub fn discover_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {

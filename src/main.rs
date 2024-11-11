@@ -6,13 +6,16 @@ mod discover;
 mod error;
 mod writer;
 
-use std::path::PathBuf;
-// Library imports
-use crate::change::Change;
-use clap::Parser;
-use std::process;
 // Internal imports
+use crate::change::Change;
+use crate::cli::ColoredOutputMode;
 use crate::cli::CommandLineArguments;
+
+// Library imports
+use clap::Parser;
+use colored::Colorize;
+use std::path::PathBuf;
+use std::process;
 
 fn file_count(number_of_files: usize) -> String {
     match number_of_files {
@@ -28,33 +31,41 @@ fn print_change_report_and_exit(
     check_only: bool,
 ) -> ! {
     if check_only && number_of_changed_files > 0 {
-        println!("Oh no! 💥 💔 💥");
+        println!("{}", "Oh no! 💥 💔 💥".white().bold());
     } else {
-        println!("All done! ✨ 🍰 ✨");
+        println!("{}", "All done! ✨ 🍰 ✨".white().bold());
     }
 
     let check_only_word = if check_only { " would be " } else { " " };
 
     if number_of_changed_files > 0 {
         print!(
-            "{}{}reformatted",
-            file_count(number_of_changed_files),
-            check_only_word
+            "{}{}{}",
+            file_count(number_of_changed_files).blue().bold(),
+            check_only_word.white().bold(),
+            "reformatted".white().bold(),
         );
     }
 
     if number_of_changed_files > 0 && number_of_unchanged_files > 0 {
-        print!(", ");
+        print!("{}", ", ".white().bold());
     }
 
     if number_of_unchanged_files > 0 {
         print!(
-            "{}{}left unchanged",
-            file_count(number_of_unchanged_files),
-            check_only_word
+            "{}{}{}",
+            file_count(number_of_unchanged_files).blue(),
+            check_only_word.white(),
+            "left unchanged".white()
         );
     }
-    println!(".");
+    if number_of_changed_files > 0 || number_of_unchanged_files > 0 {
+        if number_of_unchanged_files > 0 {
+            println!("{}", ".".white());
+        } else {
+            println!("{}", ".".white().bold());
+        }
+    }
 
     if check_only && number_of_changed_files > 0 {
         process::exit(1);
@@ -72,6 +83,14 @@ pub fn print_changes(file_path: &PathBuf, changes: Vec<Change>, check_only: bool
     println!("{} file '{}':", check_only_word, file_path.display());
     for change in changes {
         println!("  ↳ {}", change.to_string(check_only));
+    }
+}
+
+pub fn set_colored_output_mode(colored_output_mode: &ColoredOutputMode) {
+    match colored_output_mode {
+        ColoredOutputMode::Auto => { /* Leave it to the colored library. */ }
+        ColoredOutputMode::On => colored::control::SHOULD_COLORIZE.set_override(true),
+        ColoredOutputMode::Off => colored::control::SHOULD_COLORIZE.set_override(false),
     }
 }
 
@@ -100,7 +119,10 @@ pub fn print_changes(file_path: &PathBuf, changes: Vec<Change>, check_only: bool
 fn main() {
     let command_line_arguments: CommandLineArguments = CommandLineArguments::parse();
 
-    // Compile the regular expression in the --exclude flag.
+    // Determine whether to use colors or not.
+    set_colored_output_mode(&command_line_arguments.color);
+
+    // Compile the regular expression specified by the --exclude command line parameter.
     // Fail early if the expression is invalid.
     let regex = discover::compile_regular_expression(command_line_arguments.exclude.as_str());
 
@@ -110,7 +132,7 @@ fn main() {
         command_line_arguments.follow_symlinks,
     );
 
-    // Exclude files that match the --excluded regular expression.
+    // Exclude files that match the regular expression specified by the --excluded command line parameter.
     let filtered_files = discover::exclude_files(&all_files, &regex);
     println!("Processing {} file(s)...", filtered_files.len());
 

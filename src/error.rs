@@ -15,22 +15,28 @@ impl Error {
     pub fn to_string(&self) -> String {
         match &self {
             Error::FileNotFound(file_path) => {
-                format!("File not found '{}'.", file_path)
+                format!("File not found {}.", file_path.white().bold())
             }
             Error::FailedToReadDirectory(directory_path) => {
-                format!("Failed to read directory '{}'.", directory_path)
+                format!(
+                    "Failed to read directory {}.",
+                    directory_path.white().bold()
+                )
             }
             Error::FailedToReadDirectoryEntry(directory_path) => {
-                format!("Failed to read an entry in directory '{}'.", directory_path)
+                format!(
+                    "Failed to read an entry in directory {}.",
+                    directory_path.white().bold()
+                )
             }
             Error::InvalidRegularExpression(regular_expression) => {
-                format!("Failed to read file '{}'.", regular_expression)
+                format!("Failed to read file {}.", regular_expression.white().bold())
             }
             Error::CannotReadFile(file_path) => {
-                format!("Cannot open file '{}' for reading.", file_path)
+                format!("Cannot read {}", file_path.white().bold())
             }
             Error::CannotWriteFile(file_path) => {
-                format!("Cannot open file '{}' for writing.", file_path)
+                format!("Cannot write {}", file_path.white().bold())
             }
         }
     }
@@ -39,54 +45,4 @@ impl Error {
 pub fn die(error: Error) -> ! {
     println!("{}", error.to_string().red().bold());
     process::exit(1);
-}
-
-#[allow(dead_code)]
-pub trait ErrorReporter {
-    fn record(&mut self, error: Error);
-    fn report_all_errors(&self);
-}
-
-#[allow(dead_code)]
-pub struct DyingErrorReporter;
-
-#[allow(dead_code)]
-impl DyingErrorReporter {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-#[allow(dead_code)]
-impl ErrorReporter for DyingErrorReporter {
-    fn record(&mut self, error: Error) {
-        die(error);
-    }
-    fn report_all_errors(&self) {
-        panic!();
-    }
-}
-
-#[allow(dead_code)]
-pub struct BufferingErrorReporter {
-    pub errors: Vec<Error>,
-}
-
-#[allow(dead_code)]
-impl BufferingErrorReporter {
-    pub fn new() -> Self {
-        Self { errors: vec![] }
-    }
-}
-
-#[allow(dead_code)]
-impl ErrorReporter for BufferingErrorReporter {
-    fn record(&mut self, error: Error) {
-        self.errors.push(error);
-    }
-    fn report_all_errors(&self) {
-        for error in &self.errors {
-            println!("{}", error.to_string());
-        }
-    }
 }

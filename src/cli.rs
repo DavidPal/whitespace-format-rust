@@ -5,6 +5,20 @@ use std::path::PathBuf;
 /// A regular expression that does not match any string.
 pub const UNMATCHABLE_REGEX: &str = "$.";
 
+/// Color mode.
+#[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
+pub enum ColoredOutputMode {
+    #[default]
+    #[clap(help = "Detect coloring capabilities automatically.")]
+    Auto,
+
+    #[clap(help = "Turn off colored output.")]
+    Off,
+
+    #[clap(help = "Turn on colored output.")]
+    On,
+}
+
 /// New line marker that should be used in the output files.
 #[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
 pub enum OutputNewLineMarkerMode {
@@ -88,6 +102,14 @@ pub struct CommandLineArguments {
         Example #2: --exclude=\".git/\" excludes all files in the '.git/' directory.\
     ")]
     pub exclude: String,
+
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = ColoredOutputMode::Auto,
+        help = "Enables or disables colored output."
+    )]
+    pub color: ColoredOutputMode,
 
     #[arg(long, value_enum,
     default_value_t = OutputNewLineMarkerMode::Auto,
