@@ -1,6 +1,10 @@
+// Internal imports
+use crate::error::print_error;
+
 // Library imports
 use clap;
 use std::path::PathBuf;
+use std::process;
 
 /// A regular expression that does not match any string.
 pub const UNMATCHABLE_REGEX: &str = "$.";
@@ -188,6 +192,17 @@ pub struct CommandLineArguments {
     help = "List of files and/or directories to process. \
     Files in directories are discovered recursively.")]
     pub paths: Vec<PathBuf>,
+}
+
+impl CommandLineArguments {
+    pub fn validate(&self) {
+        if self.normalize_whitespace_only_files == TrivialFileReplacementMode::Empty
+            && self.normalize_empty_files == TrivialFileReplacementMode::OneLine
+        {
+            print_error("the argument '--normalize-whitespace-only-files=empty' cannot be used with '--normalize-empty-files=one-line'");
+            process::exit(1);
+        }
+    }
 }
 
 #[test]

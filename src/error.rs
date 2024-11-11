@@ -39,7 +39,11 @@ impl Error {
     }
 }
 
+pub fn print_error(message: &str) {
+    eprintln!("{} {}", "error:".bold().red(), message);
+}
+
 pub fn die(error: Error) -> ! {
-    println!("{}", error.to_string().red().bold());
+    print_error(&error.to_string());
     process::exit(1);
 }

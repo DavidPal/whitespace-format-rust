@@ -134,6 +134,8 @@ pub fn set_colored_output_mode(colored_output_mode: &ColoredOutputMode) {
 fn main() {
     let command_line_arguments: CommandLineArguments = CommandLineArguments::parse();
 
+    command_line_arguments.validate();
+
     // Determine whether to use colors or not.
     set_colored_output_mode(&command_line_arguments.color);
 

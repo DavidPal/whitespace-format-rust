@@ -128,13 +128,9 @@ The value `MODE` is one of the following:
 * `empty` -- Replace the file with an empty file.
 * `one-line` -- Replace the file with a file consisting of a single new line marker.
 
-Depending on the mode, an empty file or a whitespace-only file will be either
-ignored, replaced by an empty file, or replaced by a file consisting of
-single end of line marker.
+Note that `--normalize-empty-files=ignore` and `--normalize-empty-files=empty` are equivalent.
 
-If `--normalize-whitespace-only-files` is set to `empty`,
-`--normalize-empty-files setting` set to `empty` as well. In other words,
-combination `--normalize-whitespace-only-files=empty` and
+The combination `--normalize-whitespace-only-files=empty` and
 `--normalize-empty-files=one-line` is not allowed, since it would lead to
 behavior that is not idempotent.
 
