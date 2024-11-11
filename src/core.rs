@@ -692,13 +692,15 @@ mod tests {
         assert_eq!(changes, vec![Change::new(4, ChangeType::RemovedEmptyLines)]);
     }
 
-    // #[test]
-    // fn test_modify_content_remove_trailing_whitespace() {
-    //     let options: Options = Options::new().remove_trailing_whitespace();
-    //     let mut output = Vec::new();
-    //     let changes = modify_content(b"hello\r\n\rworld   ", &options, &mut output);
-    //     assert_eq!(output, b"hello\r\n\rworld");
-    //     assert_eq!(changes.len(), 1);
-    //     assert_eq!(changes, vec![Change::new(2, ChangeType::RemovedTrailingWhitespace)]);
-    // }
+    #[test]
+    fn test_modify_content_remove_trailing_whitespace() {
+        let options: Options = Options::new().remove_trailing_whitespace();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello world   ", &options, &mut output);
+        assert_eq!(output, b"hello world");
+        assert_eq!(
+            changes,
+            vec![Change::new(1, ChangeType::RemovedTrailingWhitespace)]
+        );
+    }
 }
