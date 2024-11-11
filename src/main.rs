@@ -6,10 +6,11 @@ mod discover;
 mod error;
 mod writer;
 
+use std::path::PathBuf;
 // Library imports
+use crate::change::Change;
 use clap::Parser;
 use std::process;
-
 // Internal imports
 use crate::cli::CommandLineArguments;
 
@@ -62,6 +63,18 @@ fn print_change_report_and_exit(
     process::exit(0);
 }
 
+pub fn print_changes(file_path: &PathBuf, changes: Vec<Change>, check_only: bool) {
+    let check_only_word = if check_only {
+        "Would reformat"
+    } else {
+        "Reformatted"
+    };
+    println!("{} file '{}':", check_only_word, file_path.display());
+    for change in changes {
+        println!("  ↳ {}", change.to_string(check_only));
+    }
+}
+
 /// Command line utility for formatting whitespace in text files.
 ///
 /// It has the following capabilities:
@@ -104,7 +117,6 @@ fn main() {
     // Process files one by one.
     let mut number_of_changed_files: usize = 0;
     for file_path in &filtered_files {
-        println!("Processing file '{}'...", file_path.display());
         let changes = core::process_file(
             file_path,
             &command_line_arguments.get_options(),
@@ -113,13 +125,7 @@ fn main() {
 
         if !changes.is_empty() {
             number_of_changed_files += 1;
-        }
-
-        for change in changes {
-            println!(
-                "  ↳ {}",
-                change.to_string(command_line_arguments.check_only)
-            );
+            print_changes(file_path, changes, command_line_arguments.check_only);
         }
     }
 
