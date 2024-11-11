@@ -1,6 +1,6 @@
 // Library imports
-use std::process;
 use colored::Colorize;
+use std::process;
 
 pub enum Error {
     FileNotFound(String),
