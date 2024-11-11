@@ -587,7 +587,7 @@ mod tests {
     }
 
     #[test]
-    fn test_modify_content_remove_new_line_marker_from_end_of_file_auto() {
+    fn test_modify_content_remove_new_line_marker_from_end_of_file() {
         let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  \n", &options, &mut output);
@@ -624,7 +624,23 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\n\nworld  \n");
-        assert_eq!(changes.len(), 3);
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(
+                    1,
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::Linux)
+                ),
+                Change::new(
+                    2,
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::MacOs, NewLineMarker::Linux)
+                ),
+                Change::new(
+                    3,
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::Linux)
+                ),
+            ]
+        );
     }
 
     #[test]
@@ -635,7 +651,19 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\rworld  \r");
-        assert_eq!(changes.len(), 2);
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(
+                    1,
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::MacOs)
+                ),
+                Change::new(
+                    3,
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::MacOs)
+                ),
+            ]
+        );
     }
 
     #[test]
@@ -646,15 +674,31 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\n\r\nworld  \r\n");
-        assert_eq!(changes.len(), 1);
+        assert_eq!(
+            changes,
+            vec![Change::new(
+                2,
+                ChangeType::ReplacedNewLineMarker(NewLineMarker::MacOs, NewLineMarker::Windows)
+            )]
+        );
     }
 
     #[test]
-    fn test_modify_content_remove_trailing_empty_lines_auto() {
+    fn test_modify_content_remove_trailing_empty_lines() {
         let options: Options = Options::new().remove_trailing_empty_lines();
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld\r\n\n\n\n\n\n", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld\r\n");
-        assert_eq!(changes.len(), 1);
+        assert_eq!(changes, vec![Change::new(4, ChangeType::RemovedEmptyLines)]);
     }
+
+    // #[test]
+    // fn test_modify_content_remove_trailing_whitespace() {
+    //     let options: Options = Options::new().remove_trailing_whitespace();
+    //     let mut output = Vec::new();
+    //     let changes = modify_content(b"hello\r\n\rworld   ", &options, &mut output);
+    //     assert_eq!(output, b"hello\r\n\rworld");
+    //     assert_eq!(changes.len(), 1);
+    //     assert_eq!(changes, vec![Change::new(2, ChangeType::RemovedTrailingWhitespace)]);
+    // }
 }
