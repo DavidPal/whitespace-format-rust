@@ -738,4 +738,38 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn test_modify_content_remove_trailing_whitespace_4() {
+        let options: Options = Options::new().remove_trailing_whitespace();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello world   \n\n   \n", &options, &mut output);
+        assert_eq!(output, b"hello world\n\n\n");
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(1, ChangeType::RemovedTrailingWhitespace),
+                Change::new(3, ChangeType::RemovedTrailingWhitespace),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_remove_trailing_whitespace_and_modify_content_remove_trailing_empty_lines(
+    ) {
+        let options: Options = Options::new()
+            .remove_trailing_whitespace()
+            .remove_trailing_empty_lines();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello world   \n\n   \n", &options, &mut output);
+        assert_eq!(output, b"hello world\n");
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(1, ChangeType::RemovedTrailingWhitespace),
+                Change::new(3, ChangeType::RemovedTrailingWhitespace),
+                Change::new(2, ChangeType::RemovedEmptyLines),
+            ]
+        );
+    }
 }
