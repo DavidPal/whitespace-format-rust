@@ -5,8 +5,8 @@
 Linter and formatter for source code files and text files.
 
 The purpose of this tool is to normalize source code files (e.g. Python, Java,
-C/C++, Ruby, Go, JavaScript, etc.) and text files (HTML, JSON, YAML, CSV,
-MarkDown, LaTeX) before checking them into a version control system.
+C/C++, Rust, Ruby, Go, JavaScript, etc.) and text files (HTML, JSON, YAML, CSV,
+MarkDown, LaTeX) before they are checked into a version control system.
 
 The features include:
 
@@ -21,6 +21,15 @@ The features include:
 The formatting changes are
 [idempotent](https://en.wikipedia.org/wiki/Idempotence), i.e., running the tool
 second time (with the same parameters) has no effect.
+
+Currently, the tool assumes that the files are encoded in either
+[UTF-8](https://en.wikipedia.org/wiki/UTF-8),
+[ASCII](https://en.wikipedia.org/wiki/ASCII) or [Extended
+ASCII](https://en.wikipedia.org/wiki/Extended_ASCII). The results on other
+types of files are undefined. 
+
+The tool is implemented in Rust. This ensures the necessary speed to handle
+many and/or large files.
 
 ## Installation
 
@@ -53,7 +62,7 @@ whitespace-format \
     foo.txt  my_project/
 ```
 This command can be used as a validation step before checking the source files
-into a version control system. The command outputs non-zero exit code if any
+into a version control system. The command outputs a non-zero exit code if any
 of the files would be formatted.
 
 ### Options
@@ -101,8 +110,8 @@ whitespace-format \
     foo.txt  my_project/
 ```
 This should work well for common programming languages (e.g. Python, Java,
-C/C++, JavaScript) and common text file formats (e.g. CSV, LaTeX, JSON, YAML,
-HTML, MarkDown).
+C/C++, Rust, Ruby, Go, JavaScript, etc.) and common text file formats (HTML,
+JSON, YAML, CSV, MarkDown, LaTeX).
 
 ### Empty files
 
@@ -119,7 +128,7 @@ where `MODE` is one of the following:
 * `one-line` -- Replace each file with a file consisting of a single new line marker.
 
 Depending on the mode, an empty file or a whitespace-only file will be either
-ignored, replaced by a zero-byte file, or replaced by a file consisting of
+ignored, replaced by an empty file, or replaced by a file consisting of
 single end of line marker.
 
 If `--normalize-whitespace-only-files` is set to `empty`,
@@ -127,6 +136,11 @@ If `--normalize-whitespace-only-files` is set to `empty`,
 combination `--normalize-whitespace-only-files=empty` and
 `--normalize-empty-files=one-line` is not allowed, since it would lead to
 behavior that is not idempotent.
+
+An opinionated combination of options is:
+```shell
+--normalize-empty-files=empty --normalize-whitespace-only-files=empty
+```
 
 ### Special characters
 
@@ -142,4 +156,4 @@ behavior that is not idempotent.
 
 ## License
 
-MIT
+[MIT](LICENSE)
