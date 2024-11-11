@@ -56,7 +56,7 @@ fn print_change_report_and_exit(
     }
     println!(".");
 
-    if number_of_changed_files > 0 {
+    if check_only && number_of_changed_files > 0 {
         process::exit(1);
     }
 
