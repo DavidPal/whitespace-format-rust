@@ -2,13 +2,15 @@
 name = "whitespace-format"
 version = "0.1.0"
 edition = "2021"
-
 authors = ["David Pal <davidko.pal@gmail.com>"]
+license = "MIT"
+description = "Whitespace formatter and linter for text files and source code files."
+readme = "README.md"
+homepage = "https://github.com/DavidPal/whitespace-format-rust"
+repository = "https://github.com/DavidPal/whitespace-format-rust"
+keywords = ["cli", "linter", "formatter"]
 categories = ["command-line-utilities"]
 include = ["src/", "README.md", "LICENSE"]
-license = "MIT"
-repository = "https://github.com/DavidPal/whitespace-format-rust"
-
 
 [dependencies]
 clap = { version = "4.5.20", features = ["derive"] }
