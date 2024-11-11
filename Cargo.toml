@@ -3,6 +3,13 @@ name = "whitespace-format"
 version = "0.1.0"
 edition = "2021"
 
+authors = ["David Pal <davidko.pal@gmail.com>"]
+categories = ["command-line-utilities"]
+include = ["src/", "README.md", "LICENSE"]
+license = "MIT"
+repository = "https://github.com/DavidPal/whitespace-format-rust"
+
+
 [dependencies]
 clap = { version = "4.5.20", features = ["derive"] }
 colored = { version = "2.1.0" }
