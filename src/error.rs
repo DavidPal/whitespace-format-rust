@@ -18,10 +18,7 @@ impl Error {
                 format!("File not found {}.", file_path.bold())
             }
             Error::FailedToReadDirectory(directory_path) => {
-                format!(
-                    "Failed to read directory {}.",
-                    directory_path.bold()
-                )
+                format!("Failed to read directory {}.", directory_path.bold())
             }
             Error::FailedToReadDirectoryEntry(directory_path) => {
                 format!(
