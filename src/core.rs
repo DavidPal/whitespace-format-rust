@@ -215,10 +215,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
             TrivialFileReplacementMode::Empty | TrivialFileReplacementMode::Ignore => Vec::new(),
             TrivialFileReplacementMode::OneLine => {
                 writer.write_bytes(output_new_line_marker.to_bytes());
-                Vec::from([Change {
-                    line_number: 1,
-                    change_type: ChangeType::ReplacedEmptyFileWithOneLine,
-                }])
+                Vec::from([Change::new(1, ChangeType::ReplacedEmptyFileWithOneLine)])
             }
         };
     }
@@ -226,10 +223,10 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     // Handle non-empty file consisting of whitespace only.
     if is_file_whitespace(input_data) {
         return match options.normalize_whitespace_only_files {
-            TrivialFileReplacementMode::Empty => Vec::from([Change {
-                line_number: 1,
-                change_type: ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile,
-            }]),
+            TrivialFileReplacementMode::Empty => Vec::from([Change::new(
+                1,
+                ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile,
+            )]),
             TrivialFileReplacementMode::Ignore => {
                 writer.write_bytes(input_data);
                 Vec::new()
@@ -239,10 +236,10 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
                 if input_data == output_new_line_marker.to_bytes() {
                     Vec::new()
                 } else {
-                    Vec::from([Change {
-                        line_number: 1,
-                        change_type: ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine,
-                    }])
+                    Vec::from([Change::new(
+                        1,
+                        ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine,
+                    )])
                 }
             }
         };
@@ -296,10 +293,10 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
 
             // Remove trailing whitespace
             if options.remove_trailing_whitespace && last_non_whitespace < writer.position() {
-                changes.push(Change {
-                    line_number: line_number,
-                    change_type: ChangeType::RemovedTrailingWhitespace,
-                });
+                changes.push(Change::new(
+                    line_number,
+                    ChangeType::RemovedTrailingWhitespace,
+                ));
                 writer.rewind(last_non_whitespace);
             }
 
@@ -309,13 +306,13 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
             // Add new line marker
             last_end_of_line_excluding_eol_marker = writer.position();
             if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
-                changes.push(Change {
-                    line_number: line_number,
-                    change_type: ChangeType::ReplacedNewLineMarker(
+                changes.push(Change::new(
+                    line_number,
+                    ChangeType::ReplacedNewLineMarker(
                         new_line_marker.clone(),
                         output_new_line_marker.clone(),
                     ),
-                });
+                ));
                 writer.write_bytes(output_new_line_marker.to_bytes());
             } else {
                 writer.write_bytes(new_line_marker.to_bytes());
@@ -337,19 +334,13 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
             if options.replace_tabs_with_spaces < 0 {
                 writer.write(input_data[i]);
             } else if options.replace_tabs_with_spaces > 0 {
-                changes.push(Change {
-                    line_number: line_number,
-                    change_type: ChangeType::ReplacedTabWithSpaces,
-                });
+                changes.push(Change::new(line_number, ChangeType::ReplacedTabWithSpaces));
                 for _ in 0..options.replace_tabs_with_spaces {
                     writer.write(SPACE);
                 }
             } else {
                 // Remove the tab character.
-                changes.push(Change {
-                    line_number: line_number,
-                    change_type: ChangeType::RemovedTab,
-                });
+                changes.push(Change::new(line_number, ChangeType::RemovedTab));
             }
         } else if input_data[i] == VERTICAL_TAB || input_data[i] == FORM_FEED {
             match options.normalize_non_standard_whitespace {
@@ -358,17 +349,17 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
                 }
                 NonStandardWhitespaceReplacementMode::ReplaceWithSpace => {
                     writer.write(SPACE);
-                    changes.push(Change {
-                        line_number: line_number,
-                        change_type: ChangeType::ReplacedNonstandardWhitespaceBySpace,
-                    });
+                    changes.push(Change::new(
+                        line_number,
+                        ChangeType::ReplacedNonstandardWhitespaceBySpace,
+                    ));
                 }
                 NonStandardWhitespaceReplacementMode::Remove => {
                     // Remove the non-standard whitespace character.
-                    changes.push(Change {
-                        line_number: line_number,
-                        change_type: ChangeType::RemovedNonstandardWhitespace,
-                    });
+                    changes.push(Change::new(
+                        line_number,
+                        ChangeType::RemovedNonstandardWhitespace,
+                    ));
                 }
             }
         } else {
@@ -385,10 +376,10 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         && last_end_of_line_including_eol_marker < writer.position()
         && last_non_whitespace < writer.position()
     {
-        changes.push(Change {
-            line_number: line_number,
-            change_type: ChangeType::RemovedTrailingWhitespace,
-        });
+        changes.push(Change::new(
+            line_number,
+            ChangeType::RemovedTrailingWhitespace,
+        ));
         writer.rewind(last_non_whitespace);
     }
 
@@ -400,10 +391,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         line_number = last_non_empty_line_number + 1;
         last_end_of_line_excluding_eol_marker = last_end_of_non_empty_line_excluding_eol_marker;
         last_end_of_line_including_eol_marker = last_end_of_non_empty_line_including_eol_marker;
-        changes.push(Change {
-            line_number: line_number,
-            change_type: ChangeType::RemovedEmptyLine,
-        });
+        changes.push(Change::new(line_number, ChangeType::RemovedEmptyLine));
         writer.rewind(last_end_of_non_empty_line_including_eol_marker);
     }
 
@@ -412,10 +400,10 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         && last_end_of_line_including_eol_marker < writer.position()
     {
         last_end_of_line_excluding_eol_marker = writer.position();
-        changes.push(Change {
-            line_number: line_number,
-            change_type: ChangeType::NewLineMarkerAddedToEndOfFile,
-        });
+        changes.push(Change::new(
+            line_number,
+            ChangeType::NewLineMarkerAddedToEndOfFile,
+        ));
         writer.write_bytes(output_new_line_marker.to_bytes());
         last_end_of_line_including_eol_marker = writer.position();
         line_number += 1;
@@ -427,10 +415,10 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         && line_number >= 2
     {
         line_number -= 1;
-        changes.push(Change {
-            line_number: line_number,
-            change_type: ChangeType::NewLineMarkerRemovedFromEndOfFile,
-        });
+        changes.push(Change::new(
+            line_number,
+            ChangeType::NewLineMarkerRemovedFromEndOfFile,
+        ));
         writer.rewind(last_end_of_line_excluding_eol_marker);
     }
 
@@ -503,6 +491,18 @@ mod tests {
             find_most_common_new_line_marker(b"a\r\nb\r\nc\n"),
             NewLineMarker::Windows
         );
+        assert_eq!(
+            find_most_common_new_line_marker(b"\n\n\r\r\r\n\r\n"),
+            NewLineMarker::Linux,
+        );
+        assert_eq!(
+            find_most_common_new_line_marker(b"\n\r\r\r\n\r\n"),
+            NewLineMarker::Windows,
+        );
+        assert_eq!(
+            find_most_common_new_line_marker(b"\n\r\r\r\n"),
+            NewLineMarker::MacOs,
+        );
     }
 
     #[test]
@@ -511,7 +511,7 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  ");
-        assert_eq!(changes.len(), 0);
+        assert!(changes.is_empty());
     }
 
     #[test]
@@ -520,7 +520,7 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"  ", &options, &mut output);
         assert_eq!(output, b"  ");
-        assert_eq!(changes.len(), 0);
+        assert!(changes.is_empty());
     }
 
     #[test]
@@ -529,7 +529,7 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"", &options, &mut output);
         assert_eq!(output, b"");
-        assert_eq!(changes.len(), 0);
+        assert!(changes.is_empty());
     }
 
     #[test]
@@ -538,7 +538,10 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r\n");
-        assert_eq!(changes.len(), 1);
+        assert_eq!(
+            changes,
+            vec![Change::new(3, ChangeType::NewLineMarkerAddedToEndOfFile)]
+        );
     }
 
     #[test]
@@ -549,7 +552,10 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \n");
-        assert_eq!(changes.len(), 1);
+        assert_eq!(
+            changes,
+            vec![Change::new(3, ChangeType::NewLineMarkerAddedToEndOfFile)]
+        );
     }
 
     #[test]
@@ -560,7 +566,10 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r");
-        assert_eq!(changes.len(), 1);
+        assert_eq!(
+            changes,
+            vec![Change::new(3, ChangeType::NewLineMarkerAddedToEndOfFile)]
+        );
     }
 
     #[test]
@@ -571,7 +580,25 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r\n");
-        assert_eq!(changes.len(), 1);
+        assert_eq!(
+            changes,
+            vec![Change::new(3, ChangeType::NewLineMarkerAddedToEndOfFile)]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_remove_new_line_marker_from_end_of_file_auto() {
+        let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello\r\n\rworld  \n", &options, &mut output);
+        assert_eq!(output, b"hello\r\n\rworld  ");
+        assert_eq!(
+            changes,
+            vec![Change::new(
+                3,
+                ChangeType::NewLineMarkerRemovedFromEndOfFile
+            )]
+        );
     }
 
     #[test]
@@ -580,7 +607,13 @@ mod tests {
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\n\r\nworld  \r\n");
-        assert_eq!(changes.len(), 1);
+        assert_eq!(
+            changes,
+            vec![Change::new(
+                2,
+                ChangeType::ReplacedNewLineMarker(NewLineMarker::MacOs, NewLineMarker::Windows)
+            )]
+        );
     }
 
     #[test]
@@ -615,4 +648,13 @@ mod tests {
         assert_eq!(output, b"hello\r\n\r\nworld  \r\n");
         assert_eq!(changes.len(), 1);
     }
+
+    // #[test]
+    // fn test_modify_content_remove_trailing_empty_lines_auto() {
+    //     let options: Options = Options::new().remove_trailing_empty_lines();
+    //     let mut output = Vec::new();
+    //     let changes = modify_content(b"hello\r\n\rworld\r\n\n\n", &options, &mut output);
+    //     assert_eq!(output, b"hello\r\n\r\nworld\r\n");
+    //     assert_eq!(changes.len(), 2);
+    // }
 }

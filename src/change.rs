@@ -76,12 +76,21 @@ impl ChangeType {
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Change {
     pub line_number: usize,
     pub change_type: ChangeType,
 }
 
 impl Change {
+    // Constructor
+    pub fn new(line_number: usize, change_type: ChangeType) -> Change {
+        Change {
+            line_number,
+            change_type,
+        }
+    }
+
     /// Human-readable representation of the change
     pub fn to_string(&self, check_only: bool) -> String {
         format!(
