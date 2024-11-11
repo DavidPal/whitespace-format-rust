@@ -1,4 +1,5 @@
 // Library imports
+use std::cmp::max;
 use std::fs;
 use std::path::PathBuf;
 
@@ -292,12 +293,18 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
             }
 
             // Remove trailing whitespace
-            if options.remove_trailing_whitespace && last_non_whitespace < writer.position() {
+            if options.remove_trailing_whitespace
+                && max(last_non_whitespace, last_end_of_line_including_eol_marker)
+                    < writer.position()
+            {
                 changes.push(Change::new(
                     line_number,
                     ChangeType::RemovedTrailingWhitespace,
                 ));
-                writer.rewind(last_non_whitespace);
+                writer.rewind(max(
+                    last_non_whitespace,
+                    last_end_of_line_including_eol_marker,
+                ));
             }
 
             // Determine if the last line is empty
@@ -693,7 +700,7 @@ mod tests {
     }
 
     #[test]
-    fn test_modify_content_remove_trailing_whitespace() {
+    fn test_modify_content_remove_trailing_whitespace_1() {
         let options: Options = Options::new().remove_trailing_whitespace();
         let mut output = Vec::new();
         let changes = modify_content(b"hello world   ", &options, &mut output);
@@ -701,6 +708,34 @@ mod tests {
         assert_eq!(
             changes,
             vec![Change::new(1, ChangeType::RemovedTrailingWhitespace)]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_remove_trailing_whitespace_2() {
+        let options: Options = Options::new().remove_trailing_whitespace();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello\r\n\rworld   ", &options, &mut output);
+        assert_eq!(output, b"hello\r\n\rworld");
+        assert_eq!(
+            changes,
+            vec![Change::new(3, ChangeType::RemovedTrailingWhitespace)]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_remove_trailing_whitespace_3() {
+        let options: Options = Options::new().remove_trailing_whitespace();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello  \r\n   \rworld   ", &options, &mut output);
+        assert_eq!(output, b"hello\r\n\rworld");
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(1, ChangeType::RemovedTrailingWhitespace),
+                Change::new(2, ChangeType::RemovedTrailingWhitespace),
+                Change::new(3, ChangeType::RemovedTrailingWhitespace)
+            ]
         );
     }
 }
