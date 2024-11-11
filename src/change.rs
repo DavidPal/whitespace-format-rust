@@ -6,7 +6,7 @@ pub enum ChangeType {
     NewLineMarkerRemovedFromEndOfFile,
     ReplacedNewLineMarker(NewLineMarker, NewLineMarker),
     RemovedTrailingWhitespace,
-    RemovedEmptyLine,
+    RemovedEmptyLines,
     ReplacedEmptyFileWithOneLine,
     ReplacedWhiteSpaceOnlyFileWithEmptyFile,
     ReplacedWhiteSpaceOnlyFileWithOneLine,
@@ -39,8 +39,11 @@ impl ChangeType {
             ChangeType::RemovedTrailingWhitespace => {
                 format!("Trailing whitespace{}removed.", check_only_word)
             }
-            ChangeType::RemovedEmptyLine => {
-                format!("Empty line{}removed.", check_only_word)
+            ChangeType::RemovedEmptyLines => {
+                format!(
+                    "Empty line(s) at the end of the file{}removed.",
+                    check_only_word
+                )
             }
             ChangeType::ReplacedEmptyFileWithOneLine => {
                 format!(
@@ -62,7 +65,7 @@ impl ChangeType {
             }
             ChangeType::ReplacedNonstandardWhitespaceBySpace => {
                 format!(
-                    "Non-standard whitespace character '?' replaced{}by space.",
+                    "Non-standard whitespace character '?'{}replaced by a space.",
                     check_only_word
                 )
             }

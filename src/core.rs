@@ -391,7 +391,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         line_number = last_non_empty_line_number + 1;
         last_end_of_line_excluding_eol_marker = last_end_of_non_empty_line_excluding_eol_marker;
         last_end_of_line_including_eol_marker = last_end_of_non_empty_line_including_eol_marker;
-        changes.push(Change::new(line_number, ChangeType::RemovedEmptyLine));
+        changes.push(Change::new(line_number, ChangeType::RemovedEmptyLines));
         writer.rewind(last_end_of_non_empty_line_including_eol_marker);
     }
 
@@ -649,12 +649,12 @@ mod tests {
         assert_eq!(changes.len(), 1);
     }
 
-    // #[test]
-    // fn test_modify_content_remove_trailing_empty_lines_auto() {
-    //     let options: Options = Options::new().remove_trailing_empty_lines();
-    //     let mut output = Vec::new();
-    //     let changes = modify_content(b"hello\r\n\rworld\r\n\n\n", &options, &mut output);
-    //     assert_eq!(output, b"hello\r\n\r\nworld\r\n");
-    //     assert_eq!(changes.len(), 2);
-    // }
+    #[test]
+    fn test_modify_content_remove_trailing_empty_lines_auto() {
+        let options: Options = Options::new().remove_trailing_empty_lines();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello\r\n\rworld\r\n\n\n\n\n\n", &options, &mut output);
+        assert_eq!(output, b"hello\r\n\rworld\r\n");
+        assert_eq!(changes.len(), 1);
+    }
 }

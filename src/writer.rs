@@ -36,6 +36,7 @@ impl Writer for Vec<u8> {
 
 /// Writer that only counts the number of bytes written.
 /// The bytes are written to /dev/null.
+#[derive(Debug)]
 pub struct CountingWriter {
     position: usize,
 }
