@@ -455,6 +455,7 @@ pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::change::ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile;
 
     #[test]
     fn test_is_file_whitespace() {
@@ -465,6 +466,7 @@ mod tests {
         assert_eq!(is_file_whitespace(b" \t\n\r"), true);
         assert_eq!(is_file_whitespace(b"hello"), false);
         assert_eq!(is_file_whitespace(b"hello world\n"), false);
+        assert_eq!(is_file_whitespace(b"\n\t \x0B \x0C \n  "), true);
     }
 
     #[test]
@@ -772,4 +774,140 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn test_modify_content_normalize_empty_files_empty() {
+        let options: Options =
+            Options::new().normalize_empty_files(TrivialFileReplacementMode::Empty);
+        let mut output = Vec::new();
+        let changes = modify_content(b"", &options, &mut output);
+        assert_eq!(output, b"");
+        assert_eq!(changes, vec![]);
+    }
+
+    #[test]
+    fn test_modify_content_normalize_empty_files_ignore() {
+        let options: Options =
+            Options::new().normalize_empty_files(TrivialFileReplacementMode::Ignore);
+        let mut output = Vec::new();
+        let changes = modify_content(b"", &options, &mut output);
+        assert_eq!(output, b"");
+        assert_eq!(changes, vec![]);
+    }
+
+    #[test]
+    fn test_modify_content_normalize_empty_files_one_line() {
+        let options: Options =
+            Options::new().normalize_empty_files(TrivialFileReplacementMode::OneLine);
+        let mut output = Vec::new();
+        let changes = modify_content(b"", &options, &mut output);
+        assert_eq!(output, b"\n");
+        assert_eq!(
+            changes,
+            vec![Change::new(1, ChangeType::ReplacedEmptyFileWithOneLine)]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_normalize_whitespace_only_files_empty() {
+        let options: Options =
+            Options::new().normalize_whitespace_only_files(TrivialFileReplacementMode::Empty);
+        let mut output = Vec::new();
+        let changes = modify_content(b"\n\t \x0B \x0C \n  ", &options, &mut output);
+        assert_eq!(output, b"");
+        assert_eq!(
+            changes,
+            vec![Change::new(1, ReplacedWhiteSpaceOnlyFileWithEmptyFile)]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_normalize_whitespace_only_files_ignore() {
+        let options: Options =
+            Options::new().normalize_whitespace_only_files(TrivialFileReplacementMode::Ignore);
+        let mut output = Vec::new();
+        let changes = modify_content(b"\n\t \x0B \x0C \n  ", &options, &mut output);
+        assert_eq!(output, b"\n\t \x0B \x0C \n  ");
+        assert_eq!(changes, vec![]);
+    }
+
+    #[test]
+    fn test_modify_content_normalize_whitespace_only_files_one_line() {
+        let options: Options =
+            Options::new().normalize_whitespace_only_files(TrivialFileReplacementMode::OneLine);
+        let mut output = Vec::new();
+        let changes = modify_content(b"\n\t \x0B \x0C \n  ", &options, &mut output);
+        assert_eq!(output, b"\n");
+        assert_eq!(
+            changes,
+            vec![Change::new(
+                1,
+                ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine
+            )]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_normalize_whitespace_only_files_one_line_2() {
+        let options: Options =
+            Options::new().normalize_whitespace_only_files(TrivialFileReplacementMode::OneLine);
+        let mut output = Vec::new();
+        let changes = modify_content(b"\n", &options, &mut output);
+        assert_eq!(output, b"\n");
+        assert_eq!(changes, vec![]);
+    }
+
+    #[test]
+    fn test_modify_content_normalize_whitespace_only_files_one_line_3() {
+        let options: Options = Options::new()
+            .normalize_whitespace_only_files(TrivialFileReplacementMode::OneLine)
+            .new_line_marker(OutputNewLineMarkerMode::Linux);
+        let mut output = Vec::new();
+        let changes = modify_content(b"\r\n", &options, &mut output);
+        assert_eq!(output, b"\n");
+        assert_eq!(
+            changes,
+            vec![Change::new(
+                1,
+                ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine
+            )]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_normalize_whitespace_only_files_one_line_4() {
+        let options: Options =
+            Options::new().normalize_whitespace_only_files(TrivialFileReplacementMode::OneLine);
+        let mut output = Vec::new();
+        let changes = modify_content(b"\r\n", &options, &mut output);
+        assert_eq!(output, b"\r\n");
+        assert_eq!(changes, vec![]);
+    }
+
+    #[test]
+    fn test_modify_content_replace_tabs_with_spaces_ignore() {
+        let options: Options = Options::new().replace_tabs_with_spaces(-47);
+        let mut output = Vec::new();
+        let changes = modify_content(b"\t", &options, &mut output);
+        assert_eq!(output, b"\t");
+        assert_eq!(changes, vec![]);
+    }
+
+    // #[test]
+    // fn test_modify_content_replace_tabs_with_spaces_0() {
+    //     let options: Options = Options::new().replace_tabs_with_spaces(0);
+    //     let mut output = Vec::new();
+    //     let changes = modify_content(b"\t", &options, &mut output);
+    //     assert_eq!(output, b"");
+    //     assert_eq!(changes, vec![Change::new(1, ChangeType::RemovedTab)]);
+    // }
+    //
+    // #[test]
+    // fn test_modify_content_replace_tabs_with_spaces_3() {
+    //     let options: Options = Options::new().replace_tabs_with_spaces(3);
+    //     let mut output = Vec::new();
+    //     let changes = modify_content(b"\t", &options, &mut output);
+    //     assert_eq!(output, b"   ");
+    //     assert_eq!(changes, vec![Change::new(1, ChangeType::ReplacedTabWithSpaces)]);
+    // }
 }
