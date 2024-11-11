@@ -68,6 +68,7 @@ of the files would be formatted.
 ### Options
 
 * `--check-only` -- Do not format files. Only report which files would be formatted.
+  Exit code is zero if input is formatted correctly. Exit code is non-zero if formatting is required.
 * `--follow-symlinks` -- Follow symbolic links when searching for files.
 * `--exclude=REGEX` -- Regular expression that specifies which files to exclude.
   The regular expression is evaluated on the path of each file.
@@ -78,10 +79,10 @@ of the files would be formatted.
 
 ### Formatting options
 
-* `--add-new-line-marker-at-end-of-file` -- Add missing new line marker at end of each file.
+* `--add-new-line-marker-at-end-of-file` -- Add a new line marker at the end of the file if it is missing.
 * `--remove-new-line-marker-from-end-of-file` -- Remove all new line marker(s) from the end of each file.
-  This option is ignored when `--add-new-line-marker-at-end-of-file` is used.
-  Empty lines at the end of the file are removed.
+  This option conflicts with `--add-new-line-marker-at-end-of-file`.
+  This option implies `--remove-trailing-empty-lines` option, i.e., all empty lines at the end of the file are removed.
 * `--normalize-new-line-markers` -- Make new line markers consistent in each file
   by replacing `\r\n`, `\n`, and `\r` with a consistent new line marker.
 * `--remove-trailing-whitespace` -- Remove whitespace at the end of each line.
@@ -91,9 +92,9 @@ of the files would be formatted.
     * `auto` -- Use new line marker that is the most common in each individual file.
       If no new line marker is present in the file, Linux `\n` is used.
       This is the default option.
-    * `linux` -- Use Linux new line marker `\n`.
-    * `mac` -- Use Mac new line marker `\r`.
-    * `windows` -- Use Windows new line marker `\r\n`.
+    * `linux` -- Linux new line marker `\n`.
+    * `mac` -- Mac new line marker `\r`.
+    * `windows` -- Windows new line marker `\r\n`.
 
 Note that input files can contain an arbitrary mix of new line markers `\n`,
 `\r`, `\r\n` even within the same file. The option `--new-line-marker`
@@ -118,14 +119,14 @@ JSON, YAML, CSV, MarkDown, LaTeX).
 There are separate options for handling empty files and files consisting of
 whitespace characters only:
 
-* `--normalize-empty-files=MODE`
-* `--normalize-whitespace-only-files=MODE`
+* `--normalize-empty-files=MODE` -- Replace files of zero length.
+* `--normalize-whitespace-only-files=MODE` -- Replace files consisting of whitespace only.
 
-where `MODE` is one of the following:
+The value `MODE` is one of the following:
 
 * `ignore` -- Leave the file as is. This is the default option.
 * `empty` -- Replace the file with an empty file.
-* `one-line` -- Replace each file with a file consisting of a single new line marker.
+* `one-line` -- Replace the file with a file consisting of a single new line marker.
 
 Depending on the mode, an empty file or a whitespace-only file will be either
 ignored, replaced by an empty file, or replaced by a file consisting of
@@ -146,13 +147,13 @@ An opinionated combination of options is:
 
 * `--replace-tabs-with-spaces=N` -- Replace tabs with spaces.
   Where is `N` is the number of spaces. If `N` is negative, tabs are not replaced.
-  Default value is `-1`.
+  Default value is `-1`, i.e., tabs are not replaced.
 
 * `--normalize-non-standard-whitespace=MODE` -- Replace or remove
   non-standard whitespace characters (`\v` and `\f`). `MODE` must be one of the following:
     * `ignore` -- Leave `\v` and `\f` as is. This is the default option.
     * `replace` -- Replace any occurrence of `\v` or `\f` with a single space.
-    * `remove` -- Remove all occurrences of `\v` and `\f`
+    * `remove` -- Remove all occurrences of `\\v' and '\\f'.
 
 ## License
 

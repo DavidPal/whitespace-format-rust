@@ -45,7 +45,7 @@ pub enum NonStandardWhitespaceReplacementMode {
     #[clap(help = "Leave '\\v' and '\\f' as is.")]
     Ignore,
 
-    #[clap(help = "Replace '\\v' and '\\f' with a single space.")]
+    #[clap(help = "Replace any occurrence of `\\v` or `\\f` with a single space.")]
     ReplaceWithSpace,
 
     #[clap(help = "Remove all occurrences of `\\v' and '\\f'.")]
@@ -58,10 +58,10 @@ pub enum TrivialFileReplacementMode {
     #[clap(help = "Leave the file as is.")]
     Ignore,
 
-    #[clap(help = "Replace with a file of length zero bytes.")]
+    #[clap(help = "Replace the file with an empty file.")]
     Empty,
 
-    #[clap(help = "Replace with a file consisting of a single new line marker.")]
+    #[clap(help = "Replace the file with a file consisting of a single new line marker.")]
     OneLine,
 }
 
@@ -83,7 +83,7 @@ pub struct CommandLineArguments {
     #[arg(
         long,
         default_value_t = false,
-        help = "Follow symbolic links when discovering new files."
+        help = "Follow symbolic links when searching for files."
     )]
     pub follow_symlinks: bool,
 
@@ -126,8 +126,11 @@ pub struct CommandLineArguments {
     #[arg(
         long,
         default_value_t = false,
-        help = "Remove a new line marker from the end of the file if it is present. \
-        This option automatically implies the --remove_trailing_empty_lines option."
+        conflicts_with = "add_new_line_marker_at_end_of_file",
+        help = "Remove all new line marker(s) from the end of each file. \
+        This option conflicts with `--add-new-line-marker-at-end-of-file`. \
+        This option implies `--remove-trailing-empty-lines` option, i.e., \
+        all empty lines at the end of the file are removed."
     )]
     pub remove_new_line_marker_from_end_of_file: bool,
 
@@ -148,12 +151,16 @@ pub struct CommandLineArguments {
     #[arg(
         long,
         default_value_t = false,
-        help = "Remove empty lines at the end of each file.",
-        default_value_if("remove_new_line_marker_from_end_of_file", "true", Some("true"))
+        default_value_if("remove_new_line_marker_from_end_of_file", "true", Some("true")),
+        help = "Remove empty lines at the end of each file."
     )]
     pub remove_trailing_empty_lines: bool,
 
-    #[arg(long, value_enum, default_value_t = TrivialFileReplacementMode::Ignore, help = "Replace files of zero length.")]
+    #[arg(long,
+    value_enum,
+    default_value_t = TrivialFileReplacementMode::Ignore,
+    help = "Replace files of zero length.",
+    )]
     pub normalize_empty_files: TrivialFileReplacementMode,
 
     #[arg(long,
@@ -181,4 +188,10 @@ pub struct CommandLineArguments {
     help = "List of files and/or directories to process. \
     Files in directories are discovered recursively.")]
     pub paths: Vec<PathBuf>,
+}
+
+#[test]
+fn verify_cli() {
+    use clap::CommandFactory;
+    CommandLineArguments::command().debug_assert();
 }
