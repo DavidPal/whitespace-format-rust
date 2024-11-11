@@ -31,9 +31,9 @@ fn print_change_report_and_exit(
     check_only: bool,
 ) -> ! {
     if check_only && number_of_changed_files > 0 {
-        println!("{}", "Oh no! 💥 💔 💥".white().bold());
+        println!("{}", "Oh no! 💥 💔 💥".bold());
     } else {
-        println!("{}", "All done! ✨ 🍰 ✨".white().bold());
+        println!("{}", "All done! ✨ 🍰 ✨".bold());
     }
 
     let check_only_word = if check_only { " would be " } else { " " };
@@ -42,28 +42,28 @@ fn print_change_report_and_exit(
         print!(
             "{}{}{}",
             file_count(number_of_changed_files).blue().bold(),
-            check_only_word.white().bold(),
-            "reformatted".white().bold(),
+            check_only_word.bold(),
+            "reformatted".bold(),
         );
     }
 
     if number_of_changed_files > 0 && number_of_unchanged_files > 0 {
-        print!("{}", ", ".white().bold());
+        print!("{}", ", ".bold());
     }
 
     if number_of_unchanged_files > 0 {
         print!(
             "{}{}{}",
             file_count(number_of_unchanged_files).blue(),
-            check_only_word.white(),
-            "left unchanged".white()
+            check_only_word,
+            "left unchanged"
         );
     }
     if number_of_changed_files > 0 || number_of_unchanged_files > 0 {
         if number_of_unchanged_files > 0 {
-            println!("{}", ".".white());
+            println!("{}", ".");
         } else {
-            println!("{}", ".".white().bold());
+            println!("{}", ".".bold());
         }
     }
 
@@ -84,7 +84,7 @@ pub fn print_changes(file_path: &PathBuf, changes: Vec<Change>, check_only: bool
         "{}{}{}",
         check_only_word.red().bold(),
         " file ".red().bold(),
-        file_path.display().to_string().white().bold()
+        file_path.display().to_string().bold()
     );
     for change in changes {
         println!("  ↳ {}", change.to_string(check_only).blue());
