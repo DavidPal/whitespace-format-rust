@@ -16,3 +16,14 @@ include = ["src/", "README.md", "LICENSE"]
 clap = { version = "4.5.20", features = ["derive"] }
 colored = { version = "2.1.0" }
 regex = { version = "1.11.1" }
+
+[package.metadata.deb]
+maintainer = "David Pal <davidko.pal@gmail.com>"
+copyright = "2024, David Pal <davidko.pal@gmail.com>"
+extended-description = """Whitespace formatter and linter for text files and source code files"""
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/whitespace-format", "usr/bin/", "755"],
+]
