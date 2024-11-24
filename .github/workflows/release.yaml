@@ -71,11 +71,6 @@ jobs:
         run: |
           cargo install cargo-deb
 
-      # 'cargo deb' does not seem to provide a way to specify an asset that is
-      # created at build time, such as man page. To work around this,
-      # we force a debug build, copy out the man page (and shell completions)
-      # produced from that build, put it into a predictable location and then
-      # build the deb, which knows where to look.
       - name: Build .deb file
         shell: bash
         run: |
@@ -89,7 +84,7 @@ jobs:
         run: |
           cd "$DEB_DIR"
           sum="$DEB_NAME.sha256"
-          shasum -a 256 "$DEB_NAME" > "$sum"
+          shasum --algorithm 256 "$DEB_NAME" > "$sum"
           echo "SUM=$sum" >> $GITHUB_ENV
 
       - name: Upload release archive
