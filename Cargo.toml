@@ -26,4 +26,6 @@ section = "utility"
 priority = "optional"
 assets = [
     ["target/release/whitespace-format", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/whitespace-format/", "644"],
+    ["LICENSE", "usr/share/doc/whitespace-format/", "644"],
 ]

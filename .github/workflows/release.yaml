@@ -1,6 +1,5 @@
 # This workflow is triggered when a tag is pushed to GitHub.
 # The workflow creates a new release on GitHub.
-# TODO: Automatically publish binary artifacts.
 
 name: "Release"
 
@@ -16,11 +15,11 @@ permissions:
 
 
 jobs:
-  # The create-release job runs purely to initialize the GitHub release itself,
-  # and names the release after the `x.y.z` tag that was pushed. It's separate
-  # from building the release so that we only create the release once.
-  create-release:
-    name: create-release
+
+  # Create GitHub release itself.
+  # This is a separate step needed before building the artifacts.
+  create-github-release:
+    name: "Create-release"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,3 +42,61 @@ jobs:
         run: gh release create $VERSION --draft --verify-tag --title $VERSION
     outputs:
       version: ${{ env.VERSION }}
+
+
+  # Build Debian package
+  build-release-deb:
+    name: Build Debian package
+    needs: ["create-github-release"]
+    runs-on: ubuntu-latest
+    env:
+      TARGET: x86_64-unknown-linux-gnu
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install packages (Ubuntu)
+        shell: bash
+        run: |
+          ci/ubuntu-install-packages
+
+      - name: Install rust and cargo
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ env.TARGET }}
+
+      - name: Install cargo-deb
+        shell: bash
+        run: |
+          cargo install cargo-deb
+
+      # 'cargo deb' does not seem to provide a way to specify an asset that is
+      # created at build time, such as man page. To work around this,
+      # we force a debug build, copy out the man page (and shell completions)
+      # produced from that build, put it into a predictable location and then
+      # build the deb, which knows where to look.
+      - name: Build .deb file
+        shell: bash
+        run: |
+          cargo deb --target ${{ env.TARGET }}
+          version="${{ needs.create-release.outputs.version }}"
+          echo "DEB_DIR=target/${{ env.TARGET }}/debian" >> $GITHUB_ENV
+          echo "DEB_NAME=whitespace-format_$version-1_amd64.deb" >> $GITHUB_ENV
+
+      - name: Create sha256 sum of .deb file
+        shell: bash
+        run: |
+          cd "$DEB_DIR"
+          sum="$DEB_NAME.sha256"
+          shasum -a 256 "$DEB_NAME" > "$sum"
+          echo "SUM=$sum" >> $GITHUB_ENV
+
+      - name: Upload release archive
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          cd "$DEB_DIR"
+          version="${{ needs.create-release.outputs.version }}"
+          gh release upload "$version" "$DEB_NAME" "$SUM"
