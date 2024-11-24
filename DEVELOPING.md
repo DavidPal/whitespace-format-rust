@@ -10,7 +10,7 @@ rustc --version
 cargo --version
 ```
 
-## Compiling from source
+## Compiling from source locally
 
 Compile the code with
 ```shell
@@ -19,7 +19,11 @@ cargo build --release
 The compiled executable will be placed in `./target/release/` directory. The
 executable file will be called `whitespace-format`.
 
-## Building Debian package
+## Publishing to `crates.io`
+
+Follow the [official instructions](https://doc.rust-lang.org/cargo/reference/publishing.html).
+
+## Building Debian package locally
 
 First, install `cargo-deb` extension by running the command:
 ```shell
@@ -55,3 +59,13 @@ Uninstall the package with the command:
 ```shell
 sudo dpkg --remove whitespace-format
 ```
+
+## Making a release
+
+Release is made by creating a git tag. Run the following commands:
+```shell
+git tag X.Y.Z
+git tag
+git push origin X.Y.Z
+```
+where `X.Y.Z` is the version in `Cargo.toml` file.

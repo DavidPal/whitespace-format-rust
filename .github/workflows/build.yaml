@@ -1,9 +1,43 @@
-name: "Test Suite"
+# This workflow is triggered for every pull request and every push.  It checks
+# if the source code is properly formatted, builds the executable and runs unit
+# tests.
+
+name: "Lint, Build and Test"
+
 on:
   push:
   pull_request:
 
+# We need only read-only permissions on GitHub.
+permissions:
+  contents: read
+
+
 jobs:
+
+  # Check formatting with rustfmt.
+  formatting:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Ensure rustfmt is installed and setup problem matcher.
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+      - name: Rustfmt Check
+        uses: actions-rust-lang/rustfmt@v1
+
+  # Build binary.
+  build:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo build
+
+  # Run unit tests.
   test:
     name: cargo test
     runs-on: ubuntu-latest
@@ -11,16 +45,3 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo test --all-features
-
-  # Check formatting with rustfmt
-  formatting:
-    name: cargo fmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      # Ensure rustfmt is installed and setup problem matcher
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          components: rustfmt
-      - name: Rustfmt Check
-        uses: actions-rust-lang/rustfmt@v1
