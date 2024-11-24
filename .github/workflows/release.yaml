@@ -1,5 +1,6 @@
-# This workflow is triggered when a tag is pushed to the "main" branch.
-# It creates a new release on GitHub.
+# This workflow is triggered when a tag is pushed to GitHub.
+# The workflow creates a new release on GitHub.
+# TODO: Automatically publish binary artifacts.
 
 name: "Release"
 
