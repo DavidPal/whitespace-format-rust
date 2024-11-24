@@ -51,6 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET: x86_64-unknown-linux-gnu
+      VERSION: "${{ needs.create-release.outputs.version }}"
 
     steps:
       - name: Checkout repository
