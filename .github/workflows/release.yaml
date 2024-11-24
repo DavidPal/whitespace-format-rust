@@ -72,7 +72,9 @@ jobs:
         run: |
           cargo deb --target ${{ env.TARGET }}
           version="${{ needs.create-release.outputs.version }}"
+          echo "version: $version"
           echo "DEB_DIR=target/${{ env.TARGET }}/debian" >> $GITHUB_ENV
+          echo "DEB_NAME=whitespace-format_$version-1_amd64.deb"
           echo "DEB_NAME=whitespace-format_$version-1_amd64.deb" >> $GITHUB_ENV
 
       - name: Create sha256 sum of .deb file
@@ -90,4 +92,5 @@ jobs:
         run: |
           cd "$DEB_DIR"
           version="${{ needs.create-release.outputs.version }}"
+          echo "version: $version"
           gh release upload "$version" "$DEB_NAME" "$SUM"
