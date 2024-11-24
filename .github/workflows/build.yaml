@@ -17,7 +17,7 @@ jobs:
 
   # Check formatting with rustfmt.
   formatting:
-    name: cargo fmt
+    name: Check code formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,12 +25,12 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt
-      - name: Rustfmt Check
+      - name: Run cargo fmt
         uses: actions-rust-lang/rustfmt@v1
 
   # Build binary.
   build:
-    name: cargo fmt
+    name: Build binary
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
 
   # Run unit tests.
   test:
-    name: cargo test
+    name: Run unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
