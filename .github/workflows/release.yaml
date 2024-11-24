@@ -8,9 +8,6 @@ on:
   push:
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
-    branches:
-      - "main"
-
 
 # We need write permissions on GitHub to create a new release.
 permissions:
