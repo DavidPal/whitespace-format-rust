@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET: x86_64-unknown-linux-gnu
-      VERSION: "${{ needs.create-release.outputs.version }}"
+      VERSION: "${{ needs.create-github-release.outputs.version }}"
 
     steps:
       - name: Checkout repository
@@ -71,10 +71,8 @@ jobs:
         shell: bash
         run: |
           cargo deb --target ${{ env.TARGET }}
-          version="${{ needs.create-release.outputs.version }}"
-          echo "version: $version"
+          version="${{ needs.create-github-release.outputs.version }}"
           echo "DEB_DIR=target/${{ env.TARGET }}/debian" >> $GITHUB_ENV
-          echo "DEB_NAME=whitespace-format_$version-1_amd64.deb"
           echo "DEB_NAME=whitespace-format_$version-1_amd64.deb" >> $GITHUB_ENV
 
       - name: Create sha256 sum of .deb file
@@ -91,6 +89,5 @@ jobs:
         shell: bash
         run: |
           cd "$DEB_DIR"
-          version="${{ needs.create-release.outputs.version }}"
-          echo "version: $version"
+          version="${{ needs.create-github-release.outputs.version }}"
           gh release upload "$version" "$DEB_NAME" "$SUM"
