@@ -26,14 +26,32 @@ Currently, the tool assumes that the files are encoded in either
 [UTF-8](https://en.wikipedia.org/wiki/UTF-8),
 [ASCII](https://en.wikipedia.org/wiki/ASCII) or [Extended
 ASCII](https://en.wikipedia.org/wiki/Extended_ASCII). The results on other
-types of files are undefined. 
+types of files are undefined.
 
 The tool is implemented in Rust. This ensures the necessary speed to handle
 many and/or large files.
 
 ## Installation
 
-TODO
+### Installation using `cargo`
+
+The package is published to
+[crates.io](https://crates.io/crates/whitespace-format).  If you have `cargo`
+installed, you can install the package by running:
+
+```shell
+cargo install whitespace-format
+```
+
+### Debian package
+
+If you are using a Debian-based system (Ubuntu, Debian, Mint, etc.), you can
+download the Debian package from the [release
+page](https://github.com/DavidPal/whitespace-format-rust/releases) and install
+it using `dpkg` with the command:
+```shell
+sudo dpkg --install whitespace-format*.deb
+```
 
 ## Usage
 
