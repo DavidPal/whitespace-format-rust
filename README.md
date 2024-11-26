@@ -149,7 +149,7 @@ An opinionated combination of options is:
   non-standard whitespace characters (`\v` and `\f`). `MODE` must be one of the following:
     * `ignore` -- Leave `\v` and `\f` as is. This is the default option.
     * `replace` -- Replace any occurrence of `\v` or `\f` with a single space.
-    * `remove` -- Remove all occurrences of `\\v' and '\\f'.
+    * `remove` -- Remove all occurrences of `\v` and `\f`.
 
 ## License
 
