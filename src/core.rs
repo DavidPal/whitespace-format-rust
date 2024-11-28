@@ -1,5 +1,6 @@
 // Library imports
 use std::cmp::max;
+use std::fmt;
 use std::fs;
 use std::path::PathBuf;
 
@@ -25,6 +26,19 @@ const TAB: u8 = b'\t';
 const VERTICAL_TAB: u8 = 0x0B; // The same as '\v' in C, C++, Java and Python.
 const FORM_FEED: u8 = 0x0C; // The same as '\f' in C, C++, Java and Python.
 
+/// Converts an ASCII code to a human-readable string.
+pub fn char_to_str(char: u8) -> &'static str {
+    match char {
+        CARRIAGE_RETURN => "\\n",
+        LINE_FEED => "\\r",
+        SPACE => " ",
+        TAB => "\\t",
+        VERTICAL_TAB => "\\v",
+        FORM_FEED => "\\f",
+        _ => "?",
+    }
+}
+
 /// A possible line ending.
 #[derive(PartialEq, Debug, Clone)]
 pub enum NewLineMarker {
@@ -40,11 +54,21 @@ pub enum NewLineMarker {
 }
 
 impl NewLineMarker {
-    fn to_bytes(&self) -> &'static [u8] {
+    pub fn to_bytes(&self) -> &'static [u8] {
         match &self {
             NewLineMarker::Linux => &[LINE_FEED],
             NewLineMarker::MacOs => &[CARRIAGE_RETURN],
             NewLineMarker::Windows => &[CARRIAGE_RETURN, LINE_FEED],
+        }
+    }
+}
+
+impl fmt::Display for NewLineMarker {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            NewLineMarker::Linux => f.write_str("\\n"),
+            NewLineMarker::MacOs => f.write_str("\\r"),
+            NewLineMarker::Windows => f.write_str("\\r\\n"),
         }
     }
 }
@@ -358,14 +382,14 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
                     writer.write(SPACE);
                     changes.push(Change::new(
                         line_number,
-                        ChangeType::ReplacedNonstandardWhitespaceBySpace,
+                        ChangeType::ReplacedNonstandardWhitespaceBySpace(input_data[i]),
                     ));
                 }
                 NonStandardWhitespaceReplacementMode::Remove => {
                     // Remove the non-standard whitespace character.
                     changes.push(Change::new(
                         line_number,
-                        ChangeType::RemovedNonstandardWhitespace,
+                        ChangeType::RemovedNonstandardWhitespace(input_data[i]),
                     ));
                 }
             }
@@ -935,8 +959,8 @@ mod tests {
         assert_eq!(
             changes,
             vec![
-                Change::new(1, ChangeType::ReplacedNonstandardWhitespaceBySpace),
-                Change::new(1, ChangeType::ReplacedNonstandardWhitespaceBySpace),
+                Change::new(1, ChangeType::ReplacedNonstandardWhitespaceBySpace(0x0B)),
+                Change::new(1, ChangeType::ReplacedNonstandardWhitespaceBySpace(0x0C)),
             ]
         );
     }
@@ -951,8 +975,8 @@ mod tests {
         assert_eq!(
             changes,
             vec![
-                Change::new(1, ChangeType::RemovedNonstandardWhitespace),
-                Change::new(1, ChangeType::RemovedNonstandardWhitespace),
+                Change::new(1, ChangeType::RemovedNonstandardWhitespace(0x0B)),
+                Change::new(1, ChangeType::RemovedNonstandardWhitespace(0x0C)),
             ]
         );
     }

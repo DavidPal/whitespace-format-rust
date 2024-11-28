@@ -176,3 +176,19 @@ fn main() {
         command_line_arguments.check_only,
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_file_count() {
+        assert_eq!(file_count(0), String::from(""));
+        assert_eq!(file_count(1), String::from("1 file"));
+        assert_eq!(file_count(2), String::from("2 files"));
+        assert_eq!(file_count(3), String::from("3 files"));
+        assert_eq!(file_count(4), String::from("4 files"));
+        assert_eq!(file_count(5), String::from("5 files"));
+        assert_eq!(file_count(6), String::from("6 files"));
+    }
+}
