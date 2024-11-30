@@ -391,7 +391,7 @@ pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) ->
         Ok(input_data) => {
             let mut counting_writer = CountingWriter::new();
             let changes: Vec<Change> = modify_content(&input_data, options, &mut counting_writer);
-            if !check_only {
+            if !check_only && !changes.is_empty() {
                 let mut output_writer = Vec::with_capacity(counting_writer.position());
                 modify_content(&input_data, options, &mut output_writer);
                 if let Err(_) = fs::write(file_path, output_writer) {
@@ -406,6 +406,7 @@ pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::discover::discover_files;
 
     impl Options {
         fn new() -> Self {
@@ -1035,5 +1036,55 @@ mod tests {
                 Change::new(1, ChangeType::RemovedNonstandardWhitespace(0x0C)),
             ]
         );
+    }
+
+    #[test]
+    fn test_process_file_1() {
+        let options: Options = Options::new()
+            .new_line_marker(OutputNewLineMarkerMode::Linux)
+            .normalize_new_line_markers()
+            .remove_trailing_whitespace()
+            .remove_trailing_empty_lines()
+            .normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::Remove)
+            .replace_tabs_with_spaces(4);
+
+        let files = [
+            ".gitignore",
+            "Cargo.lock",
+            "Cargo.toml",
+            "DEVELOPING.md",
+            "LICENSE",
+            "README.md",
+        ];
+        for file in files {
+            let changes = process_file(&PathBuf::from(file), &options, true);
+            assert_eq!(
+                changes,
+                vec![],
+                "The file `{file}` is not properly formatted."
+            );
+        }
+    }
+
+    #[test]
+    fn test_process_file_2() {
+        let options: Options = Options::new()
+            .new_line_marker(OutputNewLineMarkerMode::Linux)
+            .normalize_new_line_markers()
+            .remove_trailing_whitespace()
+            .remove_trailing_empty_lines()
+            .normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::Remove)
+            .replace_tabs_with_spaces(4);
+
+        let files = discover_files(&vec![PathBuf::from("src")], false);
+        for file in &files {
+            let changes = process_file(file, &options, true);
+            assert_eq!(
+                changes,
+                vec![],
+                "The file `{:?}` is not properly formatted.",
+                file
+            );
+        }
     }
 }
