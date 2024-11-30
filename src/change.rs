@@ -87,8 +87,8 @@ impl ChangeType {
 
 #[derive(PartialEq, Debug)]
 pub struct Change {
-    pub line_number: usize,
-    pub change_type: ChangeType,
+    line_number: usize,
+    change_type: ChangeType,
 }
 
 impl Change {

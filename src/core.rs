@@ -54,7 +54,7 @@ pub enum NewLineMarker {
 }
 
 impl NewLineMarker {
-    pub fn to_bytes(&self) -> &'static [u8] {
+    fn to_bytes(&self) -> &'static [u8] {
         match &self {
             NewLineMarker::Linux => &[LINE_FEED],
             NewLineMarker::MacOs => &[CARRIAGE_RETURN],
@@ -102,79 +102,6 @@ impl CommandLineArguments {
             replace_tabs_with_spaces: self.replace_tabs_with_spaces.clone(),
             normalize_non_standard_whitespace: self.normalize_non_standard_whitespace.clone(),
         }
-    }
-}
-
-#[allow(dead_code)]
-impl Options {
-    fn new() -> Self {
-        Self {
-            add_new_line_marker_at_end_of_file: false,
-            remove_new_line_marker_from_end_of_file: false,
-            normalize_new_line_markers: false,
-            remove_trailing_whitespace: false,
-            remove_trailing_empty_lines: false,
-            new_line_marker: OutputNewLineMarkerMode::Auto,
-            normalize_empty_files: TrivialFileReplacementMode::Ignore,
-            normalize_whitespace_only_files: TrivialFileReplacementMode::Ignore,
-            replace_tabs_with_spaces: -1,
-            normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
-        }
-    }
-
-    fn add_new_line_marker_at_end_of_file(mut self) -> Self {
-        self.add_new_line_marker_at_end_of_file = true;
-        self.remove_new_line_marker_from_end_of_file = false;
-        return self;
-    }
-
-    fn remove_new_line_marker_from_end_of_file(mut self) -> Self {
-        self.remove_new_line_marker_from_end_of_file = true;
-        self.add_new_line_marker_at_end_of_file = false;
-        return self;
-    }
-
-    fn normalize_new_line_markers(mut self) -> Self {
-        self.normalize_new_line_markers = true;
-        return self;
-    }
-
-    fn remove_trailing_whitespace(mut self) -> Self {
-        self.remove_trailing_whitespace = true;
-        return self;
-    }
-
-    fn remove_trailing_empty_lines(mut self) -> Self {
-        self.remove_trailing_empty_lines = true;
-        return self;
-    }
-
-    fn new_line_marker(mut self, output_new_line_marker_mode: OutputNewLineMarkerMode) -> Self {
-        self.new_line_marker = output_new_line_marker_mode;
-        return self;
-    }
-
-    fn normalize_empty_files(mut self, mode: TrivialFileReplacementMode) -> Self {
-        self.normalize_empty_files = mode;
-        return self;
-    }
-
-    fn normalize_whitespace_only_files(mut self, mode: TrivialFileReplacementMode) -> Self {
-        self.normalize_whitespace_only_files = mode;
-        return self;
-    }
-
-    fn replace_tabs_with_spaces(mut self, num_spaces: isize) -> Self {
-        self.replace_tabs_with_spaces = num_spaces;
-        return self;
-    }
-
-    fn normalize_non_standard_whitespace(
-        mut self,
-        mode: NonStandardWhitespaceReplacementMode,
-    ) -> Self {
-        self.normalize_non_standard_whitespace = mode;
-        return self;
     }
 }
 
@@ -479,7 +406,78 @@ pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::change::ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile;
+
+    impl Options {
+        fn new() -> Self {
+            Self {
+                add_new_line_marker_at_end_of_file: false,
+                remove_new_line_marker_from_end_of_file: false,
+                normalize_new_line_markers: false,
+                remove_trailing_whitespace: false,
+                remove_trailing_empty_lines: false,
+                new_line_marker: OutputNewLineMarkerMode::Auto,
+                normalize_empty_files: TrivialFileReplacementMode::Ignore,
+                normalize_whitespace_only_files: TrivialFileReplacementMode::Ignore,
+                replace_tabs_with_spaces: -1,
+                normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode::Ignore,
+            }
+        }
+
+        fn add_new_line_marker_at_end_of_file(mut self) -> Self {
+            self.add_new_line_marker_at_end_of_file = true;
+            self.remove_new_line_marker_from_end_of_file = false;
+            return self;
+        }
+
+        fn remove_new_line_marker_from_end_of_file(mut self) -> Self {
+            self.remove_new_line_marker_from_end_of_file = true;
+            self.add_new_line_marker_at_end_of_file = false;
+            return self;
+        }
+
+        fn normalize_new_line_markers(mut self) -> Self {
+            self.normalize_new_line_markers = true;
+            return self;
+        }
+
+        fn remove_trailing_whitespace(mut self) -> Self {
+            self.remove_trailing_whitespace = true;
+            return self;
+        }
+
+        fn remove_trailing_empty_lines(mut self) -> Self {
+            self.remove_trailing_empty_lines = true;
+            return self;
+        }
+
+        fn new_line_marker(mut self, output_new_line_marker_mode: OutputNewLineMarkerMode) -> Self {
+            self.new_line_marker = output_new_line_marker_mode;
+            return self;
+        }
+
+        fn normalize_empty_files(mut self, mode: TrivialFileReplacementMode) -> Self {
+            self.normalize_empty_files = mode;
+            return self;
+        }
+
+        fn normalize_whitespace_only_files(mut self, mode: TrivialFileReplacementMode) -> Self {
+            self.normalize_whitespace_only_files = mode;
+            return self;
+        }
+
+        fn replace_tabs_with_spaces(mut self, num_spaces: isize) -> Self {
+            self.replace_tabs_with_spaces = num_spaces;
+            return self;
+        }
+
+        fn normalize_non_standard_whitespace(
+            mut self,
+            mode: NonStandardWhitespaceReplacementMode,
+        ) -> Self {
+            self.normalize_non_standard_whitespace = mode;
+            return self;
+        }
+    }
 
     #[test]
     fn test_is_file_whitespace() {
@@ -841,7 +839,10 @@ mod tests {
         assert_eq!(output, b"");
         assert_eq!(
             changes,
-            vec![Change::new(1, ReplacedWhiteSpaceOnlyFileWithEmptyFile)]
+            vec![Change::new(
+                1,
+                ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile
+            )]
         );
     }
 

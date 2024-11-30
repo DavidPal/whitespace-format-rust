@@ -74,7 +74,7 @@ fn print_change_report_and_exit(
     process::exit(0);
 }
 
-pub fn print_changes(file_path: &PathBuf, changes: Vec<Change>, check_only: bool) {
+fn print_changes(file_path: &PathBuf, changes: Vec<Change>, check_only: bool) {
     let check_only_word = if check_only {
         "Would reformat"
     } else {
@@ -91,7 +91,7 @@ pub fn print_changes(file_path: &PathBuf, changes: Vec<Change>, check_only: bool
     }
 }
 
-pub fn set_colored_output_mode(colored_output_mode: &ColoredOutputMode) {
+fn set_colored_output_mode(colored_output_mode: &ColoredOutputMode) {
     match colored_output_mode {
         ColoredOutputMode::Auto => { /* Leave it to the colored library. */ }
         ColoredOutputMode::On => colored::control::SHOULD_COLORIZE.set_override(true),
