@@ -779,6 +779,61 @@ mod tests {
     }
 
     #[test]
+    fn test_modify_content_remove_trailing_whitespace_5() {
+        let options: Options = Options::new().remove_trailing_whitespace();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello world   \x0C  \n\n \x0B \n", &options, &mut output);
+        assert_eq!(output, b"hello world\n\n\n");
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(1, ChangeType::RemovedTrailingWhitespace),
+                Change::new(3, ChangeType::RemovedTrailingWhitespace),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_remove_trailing_whitespace_and_normalize_non_standard_whitespace_1() {
+        let options: Options = Options::new()
+            .remove_trailing_whitespace()
+            .normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::Remove);
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello world   \x0C  \n\n \x0B \n", &options, &mut output);
+        assert_eq!(output, b"hello world\n\n\n");
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(1, ChangeType::RemovedNonstandardWhitespace(0x0C)),
+                Change::new(1, ChangeType::RemovedTrailingWhitespace),
+                Change::new(3, ChangeType::RemovedNonstandardWhitespace(0x0B)),
+                Change::new(3, ChangeType::RemovedTrailingWhitespace),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_remove_trailing_whitespace_and_normalize_non_standard_whitespace_2() {
+        let options: Options = Options::new()
+            .remove_trailing_whitespace()
+            .normalize_non_standard_whitespace(
+                NonStandardWhitespaceReplacementMode::ReplaceWithSpace,
+            );
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello world   \x0C  \n\n \x0B \n", &options, &mut output);
+        assert_eq!(output, b"hello world\n\n\n");
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(1, ChangeType::ReplacedNonstandardWhitespaceBySpace(0x0C)),
+                Change::new(1, ChangeType::RemovedTrailingWhitespace),
+                Change::new(3, ChangeType::ReplacedNonstandardWhitespaceBySpace(0x0B)),
+                Change::new(3, ChangeType::RemovedTrailingWhitespace),
+            ]
+        );
+    }
+
+    #[test]
     fn test_modify_content_remove_trailing_whitespace_and_modify_content_remove_trailing_empty_lines(
     ) {
         let options: Options = Options::new()
