@@ -208,8 +208,82 @@ impl CommandLineArguments {
     }
 }
 
-#[test]
-fn verify_cli() {
-    use clap::CommandFactory;
-    CommandLineArguments::command().debug_assert();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        CommandLineArguments::command().debug_assert();
+    }
+
+    #[test]
+    fn test_parse_and_validate() {
+        let command_line_parameters = vec![
+            "whitespace-format",
+            "--check-only",
+            "--follow-symlinks",
+            "--exclude=^.git/",
+            "--color=off",
+            "--new-line-marker",
+            "linux",
+            "--normalize-new-line-markers",
+            "--add-new-line-marker-at-end-of-file",
+            "--remove-trailing-whitespace",
+            "--remove-trailing-empty-lines",
+            "--normalize-empty-files=empty",
+            "--normalize-whitespace-only-files=empty",
+            "--normalize-non-standard-whitespace",
+            "replace-with-space",
+            "--replace-tabs-with-spaces=4",
+            "src/",
+            "README.md",
+            "LICENSE",
+            "DEVELOPING.md",
+        ];
+        let command_line_arguments: CommandLineArguments =
+            CommandLineArguments::parse_from(command_line_parameters);
+
+        command_line_arguments.validate();
+
+        assert_eq!(command_line_arguments.check_only, true);
+        assert_eq!(command_line_arguments.follow_symlinks, true);
+        assert_eq!(command_line_arguments.exclude, "^.git/");
+        assert_eq!(command_line_arguments.color, ColoredOutputMode::Off);
+        assert_eq!(
+            command_line_arguments.new_line_marker,
+            OutputNewLineMarkerMode::Linux
+        );
+        assert_eq!(command_line_arguments.normalize_new_line_markers, true);
+        assert_eq!(
+            command_line_arguments.add_new_line_marker_at_end_of_file,
+            true
+        );
+        assert_eq!(command_line_arguments.remove_trailing_whitespace, true);
+        assert_eq!(command_line_arguments.remove_trailing_empty_lines, true);
+        assert_eq!(
+            command_line_arguments.normalize_empty_files,
+            TrivialFileReplacementMode::Empty
+        );
+        assert_eq!(
+            command_line_arguments.normalize_whitespace_only_files,
+            TrivialFileReplacementMode::Empty
+        );
+        assert_eq!(
+            command_line_arguments.normalize_non_standard_whitespace,
+            NonStandardWhitespaceReplacementMode::ReplaceWithSpace
+        );
+        assert_eq!(command_line_arguments.replace_tabs_with_spaces, 4);
+        assert_eq!(
+            command_line_arguments.paths,
+            vec![
+                PathBuf::from("src/"),
+                PathBuf::from("README.md"),
+                PathBuf::from("LICENSE"),
+                PathBuf::from("DEVELOPING.md"),
+            ]
+        );
+    }
 }
