@@ -140,4 +140,21 @@ mod tests {
             ],
         );
     }
+
+    #[test]
+    fn test_discover_files() {
+        let files = discover_files(&vec![PathBuf::from("src/")], false);
+        assert_eq!(
+            files,
+            vec![
+                PathBuf::from("src/change.rs"),
+                PathBuf::from("src/cli.rs"),
+                PathBuf::from("src/core.rs"),
+                PathBuf::from("src/discover.rs"),
+                PathBuf::from("src/error.rs"),
+                PathBuf::from("src/main.rs"),
+                PathBuf::from("src/writer.rs"),
+            ]
+        );
+    }
 }

@@ -1039,16 +1039,18 @@ mod tests {
     }
 
     #[test]
-    fn test_process_file_1() {
+    fn test_process_file() {
         let options: Options = Options::new()
             .new_line_marker(OutputNewLineMarkerMode::Linux)
+            .add_new_line_marker_at_end_of_file()
             .normalize_new_line_markers()
             .remove_trailing_whitespace()
             .remove_trailing_empty_lines()
             .normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::Remove)
             .replace_tabs_with_spaces(4);
 
-        let files = [
+        let args = vec![
+            "src/",
             ".gitignore",
             "Cargo.lock",
             "Cargo.toml",
@@ -1056,27 +1058,10 @@ mod tests {
             "LICENSE",
             "README.md",
         ];
-        for file in files {
-            let changes = process_file(&PathBuf::from(file), &options, true);
-            assert_eq!(
-                changes,
-                vec![],
-                "The file `{file}` is not properly formatted."
-            );
-        }
-    }
 
-    #[test]
-    fn test_process_file_2() {
-        let options: Options = Options::new()
-            .new_line_marker(OutputNewLineMarkerMode::Linux)
-            .normalize_new_line_markers()
-            .remove_trailing_whitespace()
-            .remove_trailing_empty_lines()
-            .normalize_non_standard_whitespace(NonStandardWhitespaceReplacementMode::Remove)
-            .replace_tabs_with_spaces(4);
+        let path_bufs = args.iter().map(|x| PathBuf::from(x)).collect::<Vec<_>>();
+        let files = discover_files(&path_bufs, false);
 
-        let files = discover_files(&vec![PathBuf::from("src")], false);
         for file in &files {
             let changes = process_file(file, &options, true);
             assert_eq!(
