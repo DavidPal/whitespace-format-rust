@@ -154,7 +154,9 @@ pub struct CommandLineArguments {
         long,
         default_value_t = false,
         default_value_if("remove_new_line_marker_from_end_of_file", "true", Some("true")),
-        help = "Remove empty lines at the end of each file."
+        help = "Remove empty lines at the end of each file.
+        If --remove-trailing-empty-lines is used, this option is used automatically.
+        "
     )]
     pub remove_trailing_empty_lines: bool,
 
@@ -183,7 +185,8 @@ pub struct CommandLineArguments {
     #[arg(long,
     default_value_t = -1,
     help = "Replace tabs with spaces. \
-    The parameter specifies the number of spaces to use. \
+    The parameter specifies the number of spaces used to replace each tab character. \
+    If the parameter is zero, tab characters are removed. \
     If the parameter is negative, tabs are not replaced.")]
     pub replace_tabs_with_spaces: isize,
 

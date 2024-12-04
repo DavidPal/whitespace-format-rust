@@ -29,7 +29,9 @@ ASCII](https://en.wikipedia.org/wiki/Extended_ASCII). The results on other
 types of files are undefined.
 
 The tool is implemented in Rust. This ensures the necessary speed to handle
-many and/or large files.
+many and/or large files. For example, formatting the whole [Linux
+Kernel](https://github.com/torvalds/linux) code base (1.4 GB, 87k files, 4k
+modified files) on a modern computer takes less than 3 seconds.
 
 ## Installation
 
@@ -116,7 +118,7 @@ of the files would be formatted.
 
 Note that input files can contain an arbitrary mix of new line markers `\n`,
 `\r`, `\r\n` even within the same file. The option `--new-line-marker`
-specifies the character that should be in the formatted file.
+specifies the character that will be written in the formatted file.
 
 An opinionated combination of options is:
 ```shell
@@ -152,16 +154,23 @@ The combination `--normalize-whitespace-only-files=empty` and
 `--normalize-empty-files=one-line` is not allowed, since it would lead to
 behavior that is not idempotent.
 
-An opinionated combination of options is:
+An opinionated combination for these two options is:
 ```shell
---normalize-empty-files=empty --normalize-whitespace-only-files=empty
+whitespace-format \
+    ...
+    --normalize-empty-files=empty \
+    --normalize-whitespace-only-files=empty
 ```
 
 ### Special characters
 
+Additional options are available for handling tab (`\t`), vertical tab (`\v`),
+and form feed (`f`) characters:
+
 * `--replace-tabs-with-spaces=N` -- Replace tabs with spaces.
-  Where is `N` is the number of spaces. If `N` is negative, tabs are not replaced.
-  Default value is `-1`, i.e., tabs are not replaced.
+  The value `N` is the number of spaces used to replace each tab character.
+  If `N` is zero, tab characters are removed. If `N` is negative, tabs are not
+  replaced. Default value is `-1`, i.e., tabs are not replaced.
 
 * `--normalize-non-standard-whitespace=MODE` -- Replace or remove
   non-standard whitespace characters (`\v` and `\f`). `MODE` must be one of the following:
