@@ -29,3 +29,6 @@ assets = [
     ["README.md", "usr/share/doc/whitespace-format/", "644"],
     ["LICENSE", "usr/share/doc/whitespace-format/", "644"],
 ]
+
+[profile.release]
+strip = "symbols"
