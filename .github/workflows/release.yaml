@@ -19,7 +19,7 @@ jobs:
   # Create GitHub release itself.
   # This is a separate step needed before building the artifacts.
   create-github-release:
-    name: "Create-release"
+    name: "Create release"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
 
 
   # Build Debian package
-  build-release-deb:
+  build-release-debian-package:
     name: Build Debian package
     needs: ["create-github-release"]
     runs-on: ubuntu-latest
@@ -91,3 +91,159 @@ jobs:
           cd "$DEB_DIR"
           version="${{ needs.create-github-release.outputs.version }}"
           gh release upload "$version" "$DEB_NAME" "$SUM"
+
+  # Build executable binaries
+  build-release-binaries:
+    name: "Build release binaries"
+    needs: ["create-github-release"]
+    runs-on: ${{ matrix.os }}
+    env:
+      # For some builds, we use cross to test on 32-bit and big-endian
+      # systems.
+      CARGO: cargo
+      # When CARGO is set to CROSS, this is set to `--target matrix.target`.
+      TARGET_FLAGS: ""
+      # When CARGO is set to CROSS, TARGET_DIR includes matrix.target.
+      TARGET_DIR: ./target
+      # Bump this as appropriate. We pin to a version to make sure CI
+      # continues to work as cross releases in the past have broken things
+      # in subtle ways.
+      CROSS_VERSION: v0.2.5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+
+          - build: stable-x86
+            os: ubuntu-latest
+            target: i686-unknown-linux-gnu
+
+          - build: stable-aarch64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+
+          - build: stable-arm-gnueabihf
+            os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+
+          - build: stable-arm-musleabihf
+            os: ubuntu-latest
+            target: armv7-unknown-linux-musleabihf
+
+          - build: stable-arm-musleabi
+            os: ubuntu-latest
+            target: armv7-unknown-linux-musleabi
+
+          - build: stable-powerpc64
+            os: ubuntu-latest
+            target: powerpc64-unknown-linux-gnu
+
+          - build: stable-s390x
+            os: ubuntu-latest
+            target: s390x-unknown-linux-gnu
+
+          - build: macos
+            os: macos-latest
+            target: x86_64-apple-darwin
+
+          - build: win-msvc
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+          - build: win-gnu
+            os: windows-latest
+            target: x86_64-pc-windows-gnu
+
+          - build: win32-msvc
+            os: windows-latest
+            target: i686-pc-windows-msvc
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install rust and cargo
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Use Cross
+        if: matrix.os == 'ubuntu-latest' && matrix.target != ''
+        shell: bash
+        run: |
+          # In the past, new releases of 'cross' have broken CI. So for now, we
+          # pin it. We also use their pre-compiled binary releases because cross
+          # has over 100 dependencies and takes a bit to compile.
+          dir="$RUNNER_TEMP/cross-download"
+          mkdir "$dir"
+          echo "$dir" >> $GITHUB_PATH
+          cd "$dir"
+          curl -LO "https://github.com/cross-rs/cross/releases/download/$CROSS_VERSION/cross-x86_64-unknown-linux-musl.tar.gz"
+          tar xf cross-x86_64-unknown-linux-musl.tar.gz
+          echo "CARGO=cross" >> $GITHUB_ENV
+
+      - name: Set target variables
+        shell: bash
+        run: |
+          echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
+          echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+
+      - name: Show command used for Cargo
+        shell: bash
+        run: |
+          echo "cargo command is: ${{ env.CARGO }}"
+          echo "target flag is: ${{ env.TARGET_FLAGS }}"
+          echo "target dir is: ${{ env.TARGET_DIR }}"
+
+      - name: Build release binary
+        shell: bash
+        run: |
+          ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            bin="target/${{ matrix.target }}/release/whitespace-format.exe"
+          else
+            bin="target/${{ matrix.target }}/release/whitespace-format"
+          fi
+          echo "BIN=$bin" >> $GITHUB_ENV
+
+      - name: Determine archive name
+        shell: bash
+        run: |
+          version="${{ needs.create-github-release.outputs.version }}"
+          echo "ARCHIVE=whitespace-format-$version-${{ matrix.target }}" >> $GITHUB_ENV
+
+      - name: Creating directory for archive
+        shell: bash
+        run: |
+          mkdir -p "$ARCHIVE"
+          cp "$BIN" "$ARCHIVE"/
+          cp {README.md,LICENSE} "$ARCHIVE"/
+
+      - name: Build archive (Windows)
+        shell: bash
+        if: matrix.os == 'windows-latest'
+        run: |
+          7z a "$ARCHIVE.zip" "$ARCHIVE"
+          certutil -hashfile "$ARCHIVE.zip" SHA256 > "$ARCHIVE.zip.sha256"
+          echo "ASSET=$ARCHIVE.zip" >> $GITHUB_ENV
+          echo "ASSET_SUM=$ARCHIVE.zip.sha256" >> $GITHUB_ENV
+
+      - name: Build archive (Unix)
+        shell: bash
+        if: matrix.os != 'windows-latest'
+        run: |
+          tar czf "$ARCHIVE.tar.gz" "$ARCHIVE"
+          shasum -a 256 "$ARCHIVE.tar.gz" > "$ARCHIVE.tar.gz.sha256"
+          echo "ASSET=$ARCHIVE.tar.gz" >> $GITHUB_ENV
+          echo "ASSET_SUM=$ARCHIVE.tar.gz.sha256" >> $GITHUB_ENV
+
+      - name: Upload release archive
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          version="${{ needs.create-github-release.outputs.version }}"
+          gh release upload "$version" ${{ env.ASSET }} ${{ env.ASSET_SUM }}
