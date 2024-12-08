@@ -173,10 +173,6 @@ jobs:
             os: windows-latest
             target: i686-pc-windows-msvc
 
-          - build: windows-intel-32bit-gnu
-            os: windows-latest
-            target: i686-pc-windows-gnu
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
