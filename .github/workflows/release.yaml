@@ -113,53 +113,69 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - build: linux
+
+          # Linux
+          - build: linux-intel-64bit-musl
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
 
-          - build: stable-x86
+          - build: linux-intel-64bit-gnu
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+
+          - build: linux-intel-32bit-gnu
             os: ubuntu-latest
             target: i686-unknown-linux-gnu
 
-          - build: stable-aarch64
+          - build: linux-arm-64bit-gnu
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
 
-          - build: stable-arm-gnueabihf
+          - build: linux-arm-gnueabihf
             os: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
 
-          - build: stable-arm-musleabihf
+          - build: linux-arm-musleabihf
             os: ubuntu-latest
             target: armv7-unknown-linux-musleabihf
 
-          - build: stable-arm-musleabi
+          - build: linux-arm-musleabi
             os: ubuntu-latest
             target: armv7-unknown-linux-musleabi
 
-          - build: stable-powerpc64
+          - build: linux-powerpc64-gnu
             os: ubuntu-latest
             target: powerpc64-unknown-linux-gnu
 
-          - build: stable-s390x
+          - build: linux-s390x-gnu
             os: ubuntu-latest
             target: s390x-unknown-linux-gnu
 
-          - build: macos
+          # MacOS
+          - build: macos-intel-64bit
             os: macos-latest
             target: x86_64-apple-darwin
 
-          - build: win-msvc
+          - build: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+
+          # Windows
+          - build: windows-intel-64bit-msvc
             os: windows-latest
             target: x86_64-pc-windows-msvc
 
-          - build: win-gnu
+          - build: windows-intel-64bit-gnu
             os: windows-latest
             target: x86_64-pc-windows-gnu
 
-          - build: win32-msvc
+          - build: windows-intel-32bit-msvc
             os: windows-latest
             target: i686-pc-windows-msvc
+
+          - build: windows-intel-32bit-gnu
+            os: windows-latest
+            target: i686-pc-windows-gnu
 
     steps:
       - name: Checkout repository
