@@ -30,7 +30,7 @@ impl Writer for Vec<u8> {
     }
 
     fn position(&self) -> usize {
-        return self.len();
+        self.len()
     }
 }
 
@@ -43,7 +43,7 @@ pub struct CountingWriter {
 
 impl CountingWriter {
     pub fn new() -> Self {
-        return CountingWriter { position: 0 };
+        CountingWriter { position: 0 }
     }
 }
 
@@ -62,7 +62,7 @@ impl Writer for CountingWriter {
     }
 
     fn position(&self) -> usize {
-        return self.position;
+        self.position
     }
 }
 

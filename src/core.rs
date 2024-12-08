@@ -89,17 +89,15 @@ pub struct Options {
 impl CommandLineArguments {
     pub fn get_options(&self) -> Options {
         Options {
-            add_new_line_marker_at_end_of_file: self.add_new_line_marker_at_end_of_file.clone(),
-            remove_new_line_marker_from_end_of_file: self
-                .remove_new_line_marker_from_end_of_file
-                .clone(),
-            normalize_new_line_markers: self.normalize_new_line_markers.clone(),
-            remove_trailing_whitespace: self.remove_trailing_whitespace.clone(),
-            remove_trailing_empty_lines: self.remove_trailing_empty_lines.clone(),
+            add_new_line_marker_at_end_of_file: self.add_new_line_marker_at_end_of_file,
+            remove_new_line_marker_from_end_of_file: self.remove_new_line_marker_from_end_of_file,
+            normalize_new_line_markers: self.normalize_new_line_markers,
+            remove_trailing_whitespace: self.remove_trailing_whitespace,
+            remove_trailing_empty_lines: self.remove_trailing_empty_lines,
             new_line_marker: self.new_line_marker.clone(),
             normalize_empty_files: self.normalize_empty_files.clone(),
             normalize_whitespace_only_files: self.normalize_whitespace_only_files.clone(),
-            replace_tabs_with_spaces: self.replace_tabs_with_spaces.clone(),
+            replace_tabs_with_spaces: self.replace_tabs_with_spaces,
             normalize_non_standard_whitespace: self.normalize_non_standard_whitespace.clone(),
         }
     }
@@ -118,7 +116,7 @@ fn is_file_whitespace(input_data: &[u8]) -> bool {
             _ => return false,
         };
     }
-    return true;
+    true
 }
 
 /// Computes the most common new line marker based on content of the file.
@@ -149,7 +147,7 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
     } else if windows_count > linux_count {
         return NewLineMarker::Windows;
     }
-    return NewLineMarker::Linux;
+    NewLineMarker::Linux
 }
 
 fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut T) -> Vec<Change> {
@@ -162,7 +160,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     };
 
     // Handle empty file.
-    if input_data.len() == 0 {
+    if input_data.is_empty() {
         return match options.normalize_empty_files {
             TrivialFileReplacementMode::Empty | TrivialFileReplacementMode::Ignore => Vec::new(),
             TrivialFileReplacementMode::OneLine => {
@@ -380,7 +378,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         writer.rewind(last_end_of_line_excluding_eol_marker);
     }
 
-    return changes;
+    changes
 }
 
 pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) -> Vec<Change> {
@@ -394,11 +392,11 @@ pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) ->
             if !check_only && !changes.is_empty() {
                 let mut output_writer = Vec::with_capacity(counting_writer.position());
                 modify_content(&input_data, options, &mut output_writer);
-                if let Err(_) = fs::write(file_path, output_writer) {
+                if fs::write(file_path, output_writer).is_err() {
                     die(Error::CannotWriteFile(file_path.display().to_string()));
                 };
             }
-            return changes;
+            changes
         }
     }
 }

@@ -1,5 +1,6 @@
 // Library imports
 use colored::Colorize;
+use std::fmt;
 use std::process;
 
 pub enum Error {
@@ -11,29 +12,38 @@ pub enum Error {
     CannotWriteFile(String),
 }
 
-impl Error {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for Error {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self {
             Error::FileNotFound(file_path) => {
-                format!("File not found {}.", file_path.bold())
+                write!(formatter, "File not found {}.", file_path.bold())
             }
             Error::FailedToReadDirectory(directory_path) => {
-                format!("Failed to read directory {}.", directory_path.bold())
+                write!(
+                    formatter,
+                    "Failed to read directory {}.",
+                    directory_path.bold()
+                )
             }
             Error::FailedToReadDirectoryEntry(directory_path) => {
-                format!(
+                write!(
+                    formatter,
                     "Failed to read an entry in directory {}.",
                     directory_path.bold()
                 )
             }
             Error::InvalidRegularExpression(regular_expression) => {
-                format!("Failed to read file {}.", regular_expression.bold())
+                write!(
+                    formatter,
+                    "Failed to read file {}.",
+                    regular_expression.bold()
+                )
             }
             Error::CannotReadFile(file_path) => {
-                format!("Cannot read {}", file_path.bold())
+                write!(formatter, "Cannot read {}", file_path.bold())
             }
             Error::CannotWriteFile(file_path) => {
-                format!("Cannot write {}", file_path.bold())
+                write!(formatter, "Cannot write {}", file_path.bold())
             }
         }
     }

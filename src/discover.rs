@@ -1,5 +1,4 @@
 // Library imports
-use regex;
 use regex::Regex;
 use std::path::PathBuf;
 
@@ -8,8 +7,8 @@ use crate::error::die;
 use crate::error::Error;
 
 /// Lists all files in a collection of paths (directories or files).
-pub fn discover_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBuf> {
-    let mut paths: Vec<PathBuf> = paths.clone();
+pub fn discover_files(paths: &[PathBuf], follow_symlinks: bool) -> Vec<PathBuf> {
+    let mut paths: Vec<PathBuf> = Vec::from(paths);
     let mut files: Vec<PathBuf> = Vec::new();
 
     loop {
@@ -54,12 +53,12 @@ pub fn discover_files(paths: &Vec<PathBuf>, follow_symlinks: bool) -> Vec<PathBu
 
     files.sort_unstable();
     files.dedup();
-    return files;
+    files
 }
 
 pub fn compile_regular_expression(regular_expression: &str) -> Regex {
     if let Ok(regex) = Regex::new(regular_expression) {
-        return regex;
+        regex
     } else {
         die(Error::InvalidRegularExpression(
             regular_expression.to_string(),
@@ -68,14 +67,14 @@ pub fn compile_regular_expression(regular_expression: &str) -> Regex {
 }
 
 /// Excludes file names that match a regular expression.
-pub fn exclude_files(paths: &Vec<PathBuf>, regex: &Regex) -> Vec<PathBuf> {
+pub fn exclude_files(paths: &[PathBuf], regex: &Regex) -> Vec<PathBuf> {
     let mut filtered_files: Vec<PathBuf> = Vec::new();
     for path in paths.iter() {
         if !regex.is_match(path.to_str().unwrap()) {
             filtered_files.push(path.clone());
         }
     }
-    return filtered_files;
+    filtered_files
 }
 
 #[cfg(test)]

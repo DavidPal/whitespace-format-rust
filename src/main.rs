@@ -14,14 +14,14 @@ use crate::cli::CommandLineArguments;
 // Library imports
 use clap::Parser;
 use colored::Colorize;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process;
 
 fn file_count(number_of_files: usize) -> String {
     match number_of_files {
         0 => String::new(),
-        1 => String::from(format!("{} file", number_of_files)),
-        _ => String::from(format!("{} files", number_of_files)),
+        1 => format!("{} file", number_of_files),
+        _ => format!("{} files", number_of_files),
     }
 }
 
@@ -74,7 +74,7 @@ fn print_change_report_and_exit(
     process::exit(0);
 }
 
-fn print_changes(file_path: &PathBuf, changes: Vec<Change>, check_only: bool) {
+fn print_changes(file_path: &Path, changes: Vec<Change>, check_only: bool) {
     let check_only_word = if check_only {
         "Would reformat"
     } else {

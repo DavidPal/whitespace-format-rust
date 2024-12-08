@@ -1,5 +1,4 @@
 // Library imports
-use clap;
 use clap::error::ErrorKind;
 use clap::CommandFactory;
 use std::path::PathBuf;
