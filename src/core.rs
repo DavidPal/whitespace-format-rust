@@ -39,7 +39,10 @@ pub fn char_to_str(char: u8) -> &'static str {
     }
 }
 
-/// A possible line ending.
+/// Type of new line marker. There are three types new line markers:
+/// 1) Linux (`\n`)
+/// 2) MacOS (`\r`)
+/// 3) Windows/DOS (`\r\n`)
 #[derive(PartialEq, Debug, Clone)]
 pub enum NewLineMarker {
     // Linux line ending is a single line feed character '\n'.
@@ -54,6 +57,8 @@ pub enum NewLineMarker {
 }
 
 impl NewLineMarker {
+    /// Byte representation of a new line marker.
+    ///
     fn to_bytes(&self) -> &'static [u8] {
         match &self {
             NewLineMarker::Linux => &[LINE_FEED],
@@ -64,6 +69,8 @@ impl NewLineMarker {
 }
 
 impl fmt::Display for NewLineMarker {
+    /// Human-readable visible non-whitespace representation
+    /// of a new line marker. This function is used in user reporting.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
             NewLineMarker::Linux => f.write_str("\\n"),
@@ -73,6 +80,7 @@ impl fmt::Display for NewLineMarker {
     }
 }
 
+/// Options for formatting a single file.
 pub struct Options {
     add_new_line_marker_at_end_of_file: bool,
     remove_new_line_marker_from_end_of_file: bool,
@@ -87,6 +95,7 @@ pub struct Options {
 }
 
 impl CommandLineArguments {
+    /// Extracts formatting options from command line arguments.
     pub fn get_options(&self) -> Options {
         Options {
             add_new_line_marker_at_end_of_file: self.add_new_line_marker_at_end_of_file,
@@ -150,6 +159,10 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
     NewLineMarker::Linux
 }
 
+/// The core formatting algorithm for making changes in a file.
+/// The output is written using a writer. A writer is an in-memory buffer
+/// that supports writing bytes and rewinds. The rewinds are used when deleting
+/// trailing whitespace.
 fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut T) -> Vec<Change> {
     // Figure out what new line marker to use when writing to the output buffer.
     let output_new_line_marker = match options.new_line_marker {
@@ -381,6 +394,9 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     changes
 }
 
+/// Formats or checks a single file and returns the list of changes tha have been
+/// made or would have been made. If check_only is set to true, the file is not modified.
+/// Otherwise, the file is overwritten in place.
 pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) -> Vec<Change> {
     match fs::read(file_path) {
         Err(_) => {
@@ -390,7 +406,7 @@ pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) ->
             let mut counting_writer = CountingWriter::new();
             let changes: Vec<Change> = modify_content(&input_data, options, &mut counting_writer);
             if !check_only && !changes.is_empty() {
-                let mut output_writer = Vec::with_capacity(counting_writer.position());
+                let mut output_writer = Vec::with_capacity(counting_writer.maximum_position());
                 modify_content(&input_data, options, &mut output_writer);
                 if fs::write(file_path, output_writer).is_err() {
                     die(Error::CannotWriteFile(file_path.display().to_string()));

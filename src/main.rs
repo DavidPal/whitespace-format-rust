@@ -17,6 +17,7 @@ use colored::Colorize;
 use std::path::Path;
 use std::process;
 
+/// Returns "1 file" or "N files" if N > 1.
 fn file_count(number_of_files: usize) -> String {
     match number_of_files {
         0 => String::new(),
@@ -25,6 +26,7 @@ fn file_count(number_of_files: usize) -> String {
     }
 }
 
+/// Reports the number of changes and unchanged files.
 fn print_change_report_and_exit(
     number_of_changed_files: usize,
     number_of_unchanged_files: usize,
@@ -74,6 +76,7 @@ fn print_change_report_and_exit(
     process::exit(0);
 }
 
+/// Reports the formatting changes that was made or would be made to a file.
 fn print_changes(file_path: &Path, changes: Vec<Change>, check_only: bool) {
     let check_only_word = if check_only {
         "Would reformat"
@@ -91,6 +94,7 @@ fn print_changes(file_path: &Path, changes: Vec<Change>, check_only: bool) {
     }
 }
 
+/// Sets the colored output mode according.
 fn set_colored_output_mode(colored_output_mode: &ColoredOutputMode) {
     match colored_output_mode {
         ColoredOutputMode::Auto => { /* Leave it to the colored library. */ }

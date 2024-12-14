@@ -56,6 +56,7 @@ pub fn discover_files(paths: &[PathBuf], follow_symlinks: bool) -> Vec<PathBuf> 
     files
 }
 
+/// Compiles regular expression.
 pub fn compile_regular_expression(regular_expression: &str) -> Regex {
     if let Ok(regex) = Regex::new(regular_expression) {
         regex

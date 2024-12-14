@@ -40,6 +40,7 @@ pub enum OutputNewLineMarkerMode {
     Windows,
 }
 
+/// Mode for dealing with `\v` and `\f` characters.
 #[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
 pub enum NonStandardWhitespaceReplacementMode {
     #[default]
@@ -53,6 +54,8 @@ pub enum NonStandardWhitespaceReplacementMode {
     Remove,
 }
 
+/// Mode for dealing with trivial files.
+/// Trivial files are either empty files, or files consisting of only whitespace.
 #[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
 pub enum TrivialFileReplacementMode {
     #[default]
@@ -66,6 +69,7 @@ pub enum TrivialFileReplacementMode {
     OneLine,
 }
 
+/// Command line arguments of the program.
 #[derive(clap::Parser, Debug)]
 #[command(
     version,
@@ -198,6 +202,7 @@ pub struct CommandLineArguments {
 }
 
 impl CommandLineArguments {
+    /// Validates command line arguments.
     pub fn validate(&self) {
         if self.normalize_whitespace_only_files == TrivialFileReplacementMode::Empty
             && self.normalize_empty_files == TrivialFileReplacementMode::OneLine

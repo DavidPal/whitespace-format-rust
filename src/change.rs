@@ -1,19 +1,43 @@
 use crate::core::char_to_str;
 use crate::core::NewLineMarker;
 
+/// Type of formatting change made in a file.
 #[derive(PartialEq, Debug)]
 pub enum ChangeType {
+    /// New line marker was added to the end of the file (because it was missing).
     NewLineMarkerAddedToEndOfFile,
+
+    /// New line marker was removed from the end of the file.
     NewLineMarkerRemovedFromEndOfFile,
+
+    /// New line marker was replaced by another one.
     ReplacedNewLineMarker(NewLineMarker, NewLineMarker),
+
+    /// White at the end of a line was removed.
     RemovedTrailingWhitespace,
+
+    /// Empty line(s) at the end of file were removed.
     RemovedEmptyLines,
+
+    /// An empty file was replaced by a file consisting of single empty line.
     ReplacedEmptyFileWithOneLine,
+
+    /// A file consisting of only whitespace was replaced by an empty file.
     ReplacedWhiteSpaceOnlyFileWithEmptyFile,
+
+    /// A file consisting of only whitespace was replaced by a file consisting of single empty line.
     ReplacedWhiteSpaceOnlyFileWithOneLine,
+
+    /// A tab character was replaces by space character(s).
     ReplacedTabWithSpaces,
+
+    /// A tab character was removed.
     RemovedTab,
+
+    /// A non-standard whitespace character (`\f` or `\v`) was replaced by a space character.
     ReplacedNonstandardWhitespaceBySpace(u8),
+
+    /// A non-standard whitespace character (`\f` or `\v`) was removed.
     RemovedNonstandardWhitespace(u8),
 }
 
@@ -85,6 +109,8 @@ impl ChangeType {
     }
 }
 
+/// A formatting change that was made or would be made to a file.
+/// The location of the change is identified by its line number.
 #[derive(PartialEq, Debug)]
 pub struct Change {
     line_number: usize,
@@ -92,7 +118,7 @@ pub struct Change {
 }
 
 impl Change {
-    // Constructor
+    /// Constructor
     pub fn new(line_number: usize, change_type: ChangeType) -> Change {
         Change {
             line_number,
