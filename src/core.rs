@@ -633,7 +633,7 @@ mod tests {
     }
 
     #[test]
-    fn test_modify_content_remove_new_line_marker_from_end_of_file() {
+    fn test_modify_content_remove_new_line_marker_from_end_of_file_1() {
         let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  \n", &options, &mut output);
@@ -644,6 +644,41 @@ mod tests {
                 3,
                 ChangeType::NewLineMarkerRemovedFromEndOfFile
             )]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_remove_new_line_marker_from_end_of_file_2() {
+        let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello", &options, &mut output);
+        assert_eq!(output, b"hello");
+        assert_eq!(changes, vec![]);
+    }
+
+    #[test]
+    fn test_modify_content_remove_new_line_marker_from_end_of_file_3() {
+        let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
+        let mut output = Vec::new();
+        let changes = modify_content(b"", &options, &mut output);
+        assert_eq!(output, b"");
+        assert_eq!(changes, vec![]);
+    }
+
+    #[test]
+    fn test_modify_content_remove_new_line_marker_from_end_of_file_4() {
+        let options: Options = Options::new()
+            .remove_new_line_marker_from_end_of_file()
+            .remove_trailing_empty_lines();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello  \n\r\n\r", &options, &mut output);
+        assert_eq!(output, b"hello  ");
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(2, ChangeType::RemovedEmptyLines),
+                Change::new(1, ChangeType::NewLineMarkerRemovedFromEndOfFile),
+            ]
         );
     }
 
