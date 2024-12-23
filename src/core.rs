@@ -49,7 +49,7 @@ pub enum NewLineMarker {
     Linux,
 
     // MacOS line ending is a single carriage return character '\r'.
-    MacOs,
+    Mac,
 
     // Windows/DOS line ending is a sequence of two characters:
     // carriage return character followed by line feed character.
@@ -62,7 +62,7 @@ impl NewLineMarker {
     fn to_bytes(&self) -> &'static [u8] {
         match &self {
             NewLineMarker::Linux => &[LINE_FEED],
-            NewLineMarker::MacOs => &[CARRIAGE_RETURN],
+            NewLineMarker::Mac => &[CARRIAGE_RETURN],
             NewLineMarker::Windows => &[CARRIAGE_RETURN, LINE_FEED],
         }
     }
@@ -74,7 +74,7 @@ impl fmt::Display for NewLineMarker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
             NewLineMarker::Linux => f.write_str("\\n"),
-            NewLineMarker::MacOs => f.write_str("\\r"),
+            NewLineMarker::Mac => f.write_str("\\r"),
             NewLineMarker::Windows => f.write_str("\\r\\n"),
         }
     }
@@ -133,7 +133,7 @@ fn is_file_whitespace(input_data: &[u8]) -> bool {
 /// If there are no new line markers, return Linux.
 fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
     let mut linux_count: usize = 0;
-    let mut macos_count: usize = 0;
+    let mut mac_count: usize = 0;
     let mut windows_count: usize = 0;
     let mut i: usize = 0;
 
@@ -143,7 +143,7 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
                 windows_count += 1;
                 i += 1;
             } else {
-                macos_count += 1;
+                mac_count += 1;
             }
         } else if input[i] == LINE_FEED {
             linux_count += 1;
@@ -151,8 +151,8 @@ fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
         i += 1;
     }
 
-    if macos_count > windows_count && macos_count > linux_count {
-        return NewLineMarker::MacOs;
+    if mac_count > windows_count && mac_count > linux_count {
+        return NewLineMarker::Mac;
     } else if windows_count > linux_count {
         return NewLineMarker::Windows;
     }
@@ -168,7 +168,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     let output_new_line_marker = match options.new_line_marker {
         OutputNewLineMarkerMode::Auto => find_most_common_new_line_marker(input_data),
         OutputNewLineMarkerMode::Linux => NewLineMarker::Linux,
-        OutputNewLineMarkerMode::MacOs => NewLineMarker::MacOs,
+        OutputNewLineMarkerMode::Mac => NewLineMarker::Mac,
         OutputNewLineMarkerMode::Windows => NewLineMarker::Windows,
     };
 
@@ -247,7 +247,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
                 // Skip the extra byte.
                 i += 1;
             } else {
-                new_line_marker = NewLineMarker::MacOs;
+                new_line_marker = NewLineMarker::Mac;
             }
 
             // Remove trailing whitespace
@@ -510,10 +510,7 @@ mod tests {
             find_most_common_new_line_marker(b"\n"),
             NewLineMarker::Linux
         );
-        assert_eq!(
-            find_most_common_new_line_marker(b"\r"),
-            NewLineMarker::MacOs
-        );
+        assert_eq!(find_most_common_new_line_marker(b"\r"), NewLineMarker::Mac);
         assert_eq!(
             find_most_common_new_line_marker(b"\r\n"),
             NewLineMarker::Windows
@@ -528,7 +525,7 @@ mod tests {
         );
         assert_eq!(
             find_most_common_new_line_marker(b"a\rb\rc\r\n"),
-            NewLineMarker::MacOs
+            NewLineMarker::Mac
         );
         assert_eq!(
             find_most_common_new_line_marker(b"a\r\nb\r\nc\n"),
@@ -544,7 +541,7 @@ mod tests {
         );
         assert_eq!(
             find_most_common_new_line_marker(b"\n\r\r\r\n"),
-            NewLineMarker::MacOs,
+            NewLineMarker::Mac,
         );
     }
 
@@ -602,10 +599,10 @@ mod tests {
     }
 
     #[test]
-    fn test_modify_content_add_new_line_marker_macos() {
+    fn test_modify_content_add_new_line_marker_mac() {
         let options: Options = Options::new()
             .add_new_line_marker_at_end_of_file()
-            .new_line_marker(OutputNewLineMarkerMode::MacOs);
+            .new_line_marker(OutputNewLineMarkerMode::Mac);
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r");
@@ -687,7 +684,7 @@ mod tests {
             changes,
             vec![Change::new(
                 2,
-                ChangeType::ReplacedNewLineMarker(NewLineMarker::MacOs, NewLineMarker::Windows)
+                ChangeType::ReplacedNewLineMarker(NewLineMarker::Mac, NewLineMarker::Windows)
             )]
         );
     }
@@ -709,7 +706,7 @@ mod tests {
                 ),
                 Change::new(
                     2,
-                    ChangeType::ReplacedNewLineMarker(NewLineMarker::MacOs, NewLineMarker::Linux)
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Mac, NewLineMarker::Linux)
                 ),
                 Change::new(
                     3,
@@ -720,10 +717,10 @@ mod tests {
     }
 
     #[test]
-    fn test_modify_content_normalize_new_line_markers_macos() {
+    fn test_modify_content_normalize_new_line_markers_mac() {
         let options: Options = Options::new()
             .normalize_new_line_markers()
-            .new_line_marker(OutputNewLineMarkerMode::MacOs);
+            .new_line_marker(OutputNewLineMarkerMode::Mac);
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\rworld  \r");
@@ -732,11 +729,11 @@ mod tests {
             vec![
                 Change::new(
                     1,
-                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::MacOs)
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::Mac)
                 ),
                 Change::new(
                     3,
-                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::MacOs)
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::Mac)
                 ),
             ]
         );
@@ -754,7 +751,7 @@ mod tests {
             changes,
             vec![Change::new(
                 2,
-                ChangeType::ReplacedNewLineMarker(NewLineMarker::MacOs, NewLineMarker::Windows)
+                ChangeType::ReplacedNewLineMarker(NewLineMarker::Mac, NewLineMarker::Windows)
             )]
         );
     }
