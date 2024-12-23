@@ -112,8 +112,8 @@ impl CommandLineArguments {
     }
 }
 
-/// Determines if a file consists of only whitespace.
-fn is_file_whitespace(input_data: &[u8]) -> bool {
+/// Determines if a string consists of only whitespace.
+fn is_whitespace_only(input_data: &[u8]) -> bool {
     for char in input_data {
         match *char {
             CARRIAGE_RETURN => continue,
@@ -128,24 +128,24 @@ fn is_file_whitespace(input_data: &[u8]) -> bool {
     true
 }
 
-/// Computes the most common new line marker based on content of the file.
+/// Computes the most common new line marker in a string.
 /// If there are ties, prefer Linux to Windows to MacOS.
 /// If there are no new line markers, return Linux.
-fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
+fn find_most_common_new_line_marker(input_data: &[u8]) -> NewLineMarker {
     let mut linux_count: usize = 0;
     let mut mac_count: usize = 0;
     let mut windows_count: usize = 0;
     let mut i: usize = 0;
 
-    while i < input.len() {
-        if input[i] == CARRIAGE_RETURN {
-            if i < input.len() - 1 && input[i + 1] == LINE_FEED {
+    while i < input_data.len() {
+        if input_data[i] == CARRIAGE_RETURN {
+            if i < input_data.len() - 1 && input_data[i + 1] == LINE_FEED {
                 windows_count += 1;
                 i += 1;
             } else {
                 mac_count += 1;
             }
-        } else if input[i] == LINE_FEED {
+        } else if input_data[i] == LINE_FEED {
             linux_count += 1;
         }
         i += 1;
@@ -184,7 +184,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     }
 
     // Handle non-empty file consisting of whitespace only.
-    if is_file_whitespace(input_data) {
+    if is_whitespace_only(input_data) {
         return match options.normalize_whitespace_only_files {
             TrivialFileReplacementMode::Empty => Vec::from([Change::new(
                 1,
@@ -492,15 +492,15 @@ mod tests {
     }
 
     #[test]
-    fn test_is_file_whitespace() {
-        assert_eq!(is_file_whitespace(&[]), true);
-        assert_eq!(is_file_whitespace(b"    "), true);
-        assert_eq!(is_file_whitespace(b"\n\n\n"), true);
-        assert_eq!(is_file_whitespace(b"\r\r\r"), true);
-        assert_eq!(is_file_whitespace(b" \t\n\r"), true);
-        assert_eq!(is_file_whitespace(b"hello"), false);
-        assert_eq!(is_file_whitespace(b"hello world\n"), false);
-        assert_eq!(is_file_whitespace(b"\n\t \x0B \x0C \n  "), true);
+    fn test_is_whitespace_only() {
+        assert_eq!(is_whitespace_only(&[]), true);
+        assert_eq!(is_whitespace_only(b"    "), true);
+        assert_eq!(is_whitespace_only(b"\n\n\n"), true);
+        assert_eq!(is_whitespace_only(b"\r\r\r"), true);
+        assert_eq!(is_whitespace_only(b" \t\n\r"), true);
+        assert_eq!(is_whitespace_only(b"hello"), false);
+        assert_eq!(is_whitespace_only(b"hello world\n"), false);
+        assert_eq!(is_whitespace_only(b"\n\t \x0B \x0C \n  "), true);
     }
 
     #[test]
