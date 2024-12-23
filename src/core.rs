@@ -218,10 +218,6 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     let mut line_number: usize = 1;
 
     // Position one byte past the end of last line in the output buffer
-    // excluding the last end of line marker.
-    let mut last_end_of_line_excluding_eol_marker: usize = 0;
-
-    // Position one byte past the end of last line in the output buffer
     // including the last end of line marker.
     let mut last_end_of_line_including_eol_marker: usize = 0;
 
@@ -272,8 +268,11 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
             // Determine if the last line is empty
             let is_empty_line: bool = last_end_of_line_including_eol_marker == writer.position();
 
+            // Position one byte past the end of last line in the output buffer
+            // excluding the last end of line marker.
+            let last_end_of_line_excluding_eol_marker: usize = writer.position();
+
             // Add new line marker
-            last_end_of_line_excluding_eol_marker = writer.position();
             if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
                 changes.push(Change::new(
                     line_number,
@@ -358,7 +357,6 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         && last_end_of_non_empty_line_including_eol_marker < writer.position()
     {
         line_number = last_non_empty_line_number + 1;
-        last_end_of_line_excluding_eol_marker = last_end_of_non_empty_line_excluding_eol_marker;
         last_end_of_line_including_eol_marker = last_end_of_non_empty_line_including_eol_marker;
         changes.push(Change::new(line_number, ChangeType::RemovedEmptyLines));
         writer.rewind(last_end_of_non_empty_line_including_eol_marker);
@@ -368,7 +366,6 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     if options.add_new_line_marker_at_end_of_file
         && last_end_of_line_including_eol_marker < writer.position()
     {
-        last_end_of_line_excluding_eol_marker = writer.position();
         changes.push(Change::new(
             line_number,
             ChangeType::NewLineMarkerAddedToEndOfFile,
@@ -383,12 +380,12 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         && last_end_of_line_including_eol_marker == writer.position()
         && line_number >= 2
     {
-        line_number -= 1;
+        line_number = last_non_empty_line_number;
         changes.push(Change::new(
             line_number,
             ChangeType::NewLineMarkerRemovedFromEndOfFile,
         ));
-        writer.rewind(last_end_of_line_excluding_eol_marker);
+        writer.rewind(last_end_of_non_empty_line_excluding_eol_marker);
     }
 
     changes
@@ -667,18 +664,16 @@ mod tests {
 
     #[test]
     fn test_modify_content_remove_new_line_marker_from_end_of_file_4() {
-        let options: Options = Options::new()
-            .remove_new_line_marker_from_end_of_file()
-            .remove_trailing_empty_lines();
+        let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
         let mut output = Vec::new();
         let changes = modify_content(b"hello  \n\r\n\r", &options, &mut output);
         assert_eq!(output, b"hello  ");
         assert_eq!(
             changes,
-            vec![
-                Change::new(2, ChangeType::RemovedEmptyLines),
-                Change::new(1, ChangeType::NewLineMarkerRemovedFromEndOfFile),
-            ]
+            vec![Change::new(
+                1,
+                ChangeType::NewLineMarkerRemovedFromEndOfFile
+            ),]
         );
     }
 
