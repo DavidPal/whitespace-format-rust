@@ -375,7 +375,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         line_number += 1;
     }
 
-    // Remove new line marker from the end of the file
+    // Remove new line marker(s) from the end of the file
     if options.remove_new_line_marker_from_end_of_file
         && last_end_of_line_including_eol_marker == writer.position()
         && line_number >= 2
