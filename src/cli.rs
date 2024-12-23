@@ -158,7 +158,7 @@ pub struct CommandLineArguments {
         default_value_t = false,
         default_value_if("remove_new_line_marker_from_end_of_file", "true", Some("true")),
         help = "Remove empty lines at the end of each file. \
-        If --remove-trailing-empty-lines is used, this option is used automatically.
+        If --remove-new-line-marker-from-end-of-file is used, this option is used automatically.
         "
     )]
     pub remove_trailing_empty_lines: bool,
