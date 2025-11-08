@@ -86,6 +86,7 @@ pub struct Options {
     remove_new_line_marker_from_end_of_file: bool,
     normalize_new_line_markers: bool,
     remove_trailing_whitespace: bool,
+    remove_leading_empty_lines: bool,
     remove_trailing_empty_lines: bool,
     new_line_marker: OutputNewLineMarkerMode,
     normalize_empty_files: TrivialFileReplacementMode,
@@ -102,6 +103,7 @@ impl CommandLineArguments {
             remove_new_line_marker_from_end_of_file: self.remove_new_line_marker_from_end_of_file,
             normalize_new_line_markers: self.normalize_new_line_markers,
             remove_trailing_whitespace: self.remove_trailing_whitespace,
+            remove_leading_empty_lines: self.remove_leading_empty_lines,
             remove_trailing_empty_lines: self.remove_trailing_empty_lines,
             new_line_marker: self.new_line_marker.clone(),
             normalize_empty_files: self.normalize_empty_files.clone(),
@@ -217,6 +219,12 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     // Line number. It is incremented every time we encounter a new end of line marker.
     let mut line_number: usize = 1;
 
+    // Number of non-empty lines in the output buffer.
+    let mut number_of_non_empty_lines = 0;
+
+    // Number of leading empty lines removed.
+    let mut number_of_empty_leading_lines_removed = 0;
+
     // Position one byte past the end of last line in the output buffer
     // including the last end of line marker.
     let mut last_end_of_line_including_eol_marker: usize = 0;
@@ -268,32 +276,39 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
             // Determine if the last line is empty
             let is_empty_line: bool = last_end_of_line_including_eol_marker == writer.position();
 
-            // Position one byte past the end of last line in the output buffer
-            // excluding the last end of line marker.
-            let last_end_of_line_excluding_eol_marker: usize = writer.position();
-
-            // Add new line marker
-            if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
-                changes.push(Change::new(
-                    line_number,
-                    ChangeType::ReplacedNewLineMarker(
-                        new_line_marker.clone(),
-                        output_new_line_marker.clone(),
-                    ),
-                ));
-                writer.write_bytes(output_new_line_marker.to_bytes());
+            if is_empty_line && options.remove_leading_empty_lines && number_of_non_empty_lines == 0
+            {
+                //  Remove empty leading line.
+                number_of_empty_leading_lines_removed += 1;
             } else {
-                writer.write_bytes(new_line_marker.to_bytes());
-            }
-            last_end_of_line_including_eol_marker = writer.position();
+                // Position one byte past the end of last line in the output buffer
+                // excluding the last end of line marker.
+                let last_end_of_line_excluding_eol_marker: usize = writer.position();
 
-            // Update position of last non-empty line.
-            if !is_empty_line {
-                last_end_of_non_empty_line_excluding_eol_marker =
-                    last_end_of_line_excluding_eol_marker;
-                last_end_of_non_empty_line_including_eol_marker =
-                    last_end_of_line_including_eol_marker;
-                last_non_empty_line_number = line_number;
+                // Add new line marker
+                if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
+                    changes.push(Change::new(
+                        line_number,
+                        ChangeType::ReplacedNewLineMarker(
+                            new_line_marker.clone(),
+                            output_new_line_marker.clone(),
+                        ),
+                    ));
+                    writer.write_bytes(output_new_line_marker.to_bytes());
+                } else {
+                    writer.write_bytes(new_line_marker.to_bytes());
+                }
+                last_end_of_line_including_eol_marker = writer.position();
+
+                // Update position of last non-empty line.
+                if !is_empty_line {
+                    last_end_of_non_empty_line_excluding_eol_marker =
+                        last_end_of_line_excluding_eol_marker;
+                    last_end_of_non_empty_line_including_eol_marker =
+                        last_end_of_line_including_eol_marker;
+                    last_non_empty_line_number = line_number;
+                    number_of_non_empty_lines += 1;
+                }
             }
             line_number += 1;
         } else if input_data[i] == SPACE {
@@ -351,6 +366,11 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         writer.rewind(last_non_whitespace);
     }
 
+    // If there were any leading empty lines removed, report it.
+    if number_of_empty_leading_lines_removed > 0 {
+        changes.push(Change::new(1, ChangeType::RemovedLeadingEmptyLines));
+    }
+
     // Remove trailing empty lines.
     if options.remove_trailing_empty_lines
         && last_end_of_line_including_eol_marker == writer.position()
@@ -358,7 +378,10 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     {
         line_number = last_non_empty_line_number + 1;
         last_end_of_line_including_eol_marker = last_end_of_non_empty_line_including_eol_marker;
-        changes.push(Change::new(line_number, ChangeType::RemovedEmptyLines));
+        changes.push(Change::new(
+            line_number,
+            ChangeType::RemovedTrailingEmptyLines,
+        ));
         writer.rewind(last_end_of_non_empty_line_including_eol_marker);
     }
 
@@ -426,6 +449,7 @@ mod tests {
                 remove_new_line_marker_from_end_of_file: false,
                 normalize_new_line_markers: false,
                 remove_trailing_whitespace: false,
+                remove_leading_empty_lines: false,
                 remove_trailing_empty_lines: false,
                 new_line_marker: OutputNewLineMarkerMode::Auto,
                 normalize_empty_files: TrivialFileReplacementMode::Ignore,
@@ -454,6 +478,11 @@ mod tests {
 
         fn remove_trailing_whitespace(mut self) -> Self {
             self.remove_trailing_whitespace = true;
+            return self;
+        }
+
+        fn remove_leading_empty_lines(mut self) -> Self {
+            self.remove_leading_empty_lines = true;
             return self;
         }
 
@@ -757,12 +786,69 @@ mod tests {
     }
 
     #[test]
+    fn test_modify_content_remove_leading_empty_lines_1() {
+        let options: Options = Options::new().remove_leading_empty_lines();
+        let mut output = Vec::new();
+        let changes = modify_content(
+            b"\r\r\n\nhello\r\n\rworld\r\n\n\n\n\n\n",
+            &options,
+            &mut output,
+        );
+        assert_eq!(output, b"hello\r\n\rworld\r\n\n\n\n\n\n");
+        assert_eq!(
+            changes,
+            vec![Change::new(1, ChangeType::RemovedLeadingEmptyLines)]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_remove_leading_empty_lines_2() {
+        let options: Options = Options::new().remove_leading_empty_lines();
+        let mut output = Vec::new();
+        let changes = modify_content(
+            b"\r   \r\n   \nhello\r\n\rworld\r\n\n\n\n\n\n",
+            &options,
+            &mut output,
+        );
+        assert_eq!(output, b"   \r\n   \nhello\r\n\rworld\r\n\n\n\n\n\n");
+        assert_eq!(
+            changes,
+            vec![Change::new(1, ChangeType::RemovedLeadingEmptyLines)]
+        );
+    }
+
+    #[test]
+    fn test_modify_content_remove_leading_empty_lines_remove_trailing_whitespace() {
+        let options: Options = Options::new()
+            .remove_leading_empty_lines()
+            .remove_trailing_whitespace();
+        let mut output = Vec::new();
+        let changes = modify_content(
+            b"\r   \r\n   \nhello\r\n\rworld\r\n\n\n\n\n\n",
+            &options,
+            &mut output,
+        );
+        assert_eq!(output, b"hello\r\n\rworld\r\n\n\n\n\n\n");
+        assert_eq!(
+            changes,
+            vec![
+                Change::new(2, ChangeType::RemovedTrailingWhitespace),
+                Change::new(3, ChangeType::RemovedTrailingWhitespace),
+                Change::new(1, ChangeType::RemovedLeadingEmptyLines),
+            ]
+        );
+    }
+
+    #[test]
     fn test_modify_content_remove_trailing_empty_lines() {
         let options: Options = Options::new().remove_trailing_empty_lines();
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld\r\n\n\n\n\n\n", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld\r\n");
-        assert_eq!(changes, vec![Change::new(4, ChangeType::RemovedEmptyLines)]);
+        assert_eq!(
+            changes,
+            vec![Change::new(4, ChangeType::RemovedTrailingEmptyLines)]
+        );
     }
 
     #[test]
@@ -889,7 +975,7 @@ mod tests {
             vec![
                 Change::new(1, ChangeType::RemovedTrailingWhitespace),
                 Change::new(3, ChangeType::RemovedTrailingWhitespace),
-                Change::new(2, ChangeType::RemovedEmptyLines),
+                Change::new(2, ChangeType::RemovedTrailingEmptyLines),
             ]
         );
     }

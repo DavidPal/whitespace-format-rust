@@ -16,8 +16,11 @@ pub enum ChangeType {
     /// White at the end of a line was removed.
     RemovedTrailingWhitespace,
 
+    /// Empty line at the beginning of file was removed.
+    RemovedLeadingEmptyLines,
+
     /// Empty line(s) at the end of file were removed.
-    RemovedEmptyLines,
+    RemovedTrailingEmptyLines,
 
     /// An empty file was replaced by a file consisting of single empty line.
     ReplacedEmptyFileWithOneLine,
@@ -67,7 +70,13 @@ impl ChangeType {
             ChangeType::RemovedTrailingWhitespace => {
                 format!("Trailing whitespace{}removed.", check_only_word)
             }
-            ChangeType::RemovedEmptyLines => {
+            ChangeType::RemovedLeadingEmptyLines => {
+                format!(
+                    "Empty line at the beginning of the file{}removed.",
+                    check_only_word
+                )
+            }
+            ChangeType::RemovedTrailingEmptyLines => {
                 format!(
                     "Empty line(s) at the end of the file{}removed.",
                     check_only_word
