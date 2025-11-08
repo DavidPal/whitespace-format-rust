@@ -80,8 +80,9 @@ pub struct CommandLineArguments {
     #[arg(
         long,
         default_value_t = false,
-        help = "Do not format files. Only report which files would be formatted. \
-        Exit code is zero if input is formatted correctly. Exit code is non-zero if formatting is required."
+        help = "Do not format files. Only report which files need to be formatted and \
+        what changes need to be made to each file. If one or more files \
+        need to be formatted, a non-zero exit code is returned."
     )]
     pub check_only: bool,
 
@@ -101,10 +102,10 @@ pub struct CommandLineArguments {
     long_help =
         "Regular expression that specifies which files to exclude. \
         The regular expression is evaluated on the path of each file. \
-        The default value is a regular expression that does not match anything.\
-        \n\n\
-        Example #1: --exclude=\"(.jpeg|.png)$\" excludes files with '.jpeg' or '.png' extension.\n\
-        Example #2: --exclude=\".git/\" excludes all files in the '.git/' directory.\
+        For example, --exclude='(\\.jpeg|\\.png)$' excludes files \
+        with '.jpeg' or '.png' extension. As another example, \
+        --exclude='^tmp/' excludes all files in the 'tmp/' directory and \
+        its subdirectories, however, files in 'data/tmp/' will not be excluded.
     ")]
     pub exclude: String,
 
