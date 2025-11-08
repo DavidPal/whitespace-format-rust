@@ -49,7 +49,7 @@ pub enum NewLineMarker {
     Linux,
 
     // MacOS line ending is a single carriage return character '\r'.
-    MacOs,
+    Mac,
 
     // Windows/DOS line ending is a sequence of two characters:
     // carriage return character followed by line feed character.
@@ -62,7 +62,7 @@ impl NewLineMarker {
     fn to_bytes(&self) -> &'static [u8] {
         match &self {
             NewLineMarker::Linux => &[LINE_FEED],
-            NewLineMarker::MacOs => &[CARRIAGE_RETURN],
+            NewLineMarker::Mac => &[CARRIAGE_RETURN],
             NewLineMarker::Windows => &[CARRIAGE_RETURN, LINE_FEED],
         }
     }
@@ -74,7 +74,7 @@ impl fmt::Display for NewLineMarker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
             NewLineMarker::Linux => f.write_str("\\n"),
-            NewLineMarker::MacOs => f.write_str("\\r"),
+            NewLineMarker::Mac => f.write_str("\\r"),
             NewLineMarker::Windows => f.write_str("\\r\\n"),
         }
     }
@@ -114,8 +114,8 @@ impl CommandLineArguments {
     }
 }
 
-/// Determines if a file consists of only whitespace.
-fn is_file_whitespace(input_data: &[u8]) -> bool {
+/// Determines if a string consists of only whitespace.
+fn is_whitespace_only(input_data: &[u8]) -> bool {
     for char in input_data {
         match *char {
             CARRIAGE_RETURN => continue,
@@ -130,31 +130,31 @@ fn is_file_whitespace(input_data: &[u8]) -> bool {
     true
 }
 
-/// Computes the most common new line marker based on content of the file.
+/// Computes the most common new line marker in a string.
 /// If there are ties, prefer Linux to Windows to MacOS.
 /// If there are no new line markers, return Linux.
-fn find_most_common_new_line_marker(input: &[u8]) -> NewLineMarker {
+fn find_most_common_new_line_marker(input_data: &[u8]) -> NewLineMarker {
     let mut linux_count: usize = 0;
-    let mut macos_count: usize = 0;
+    let mut mac_count: usize = 0;
     let mut windows_count: usize = 0;
     let mut i: usize = 0;
 
-    while i < input.len() {
-        if input[i] == CARRIAGE_RETURN {
-            if i < input.len() - 1 && input[i + 1] == LINE_FEED {
+    while i < input_data.len() {
+        if input_data[i] == CARRIAGE_RETURN {
+            if i < input_data.len() - 1 && input_data[i + 1] == LINE_FEED {
                 windows_count += 1;
                 i += 1;
             } else {
-                macos_count += 1;
+                mac_count += 1;
             }
-        } else if input[i] == LINE_FEED {
+        } else if input_data[i] == LINE_FEED {
             linux_count += 1;
         }
         i += 1;
     }
 
-    if macos_count > windows_count && macos_count > linux_count {
-        return NewLineMarker::MacOs;
+    if mac_count > windows_count && mac_count > linux_count {
+        return NewLineMarker::Mac;
     } else if windows_count > linux_count {
         return NewLineMarker::Windows;
     }
@@ -170,7 +170,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     let output_new_line_marker = match options.new_line_marker {
         OutputNewLineMarkerMode::Auto => find_most_common_new_line_marker(input_data),
         OutputNewLineMarkerMode::Linux => NewLineMarker::Linux,
-        OutputNewLineMarkerMode::MacOs => NewLineMarker::MacOs,
+        OutputNewLineMarkerMode::Mac => NewLineMarker::Mac,
         OutputNewLineMarkerMode::Windows => NewLineMarker::Windows,
     };
 
@@ -186,7 +186,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     }
 
     // Handle non-empty file consisting of whitespace only.
-    if is_file_whitespace(input_data) {
+    if is_whitespace_only(input_data) {
         return match options.normalize_whitespace_only_files {
             TrivialFileReplacementMode::Empty => Vec::from([Change::new(
                 1,
@@ -226,10 +226,6 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     let mut number_of_empty_leading_lines_removed = 0;
 
     // Position one byte past the end of last line in the output buffer
-    // excluding the last end of line marker.
-    let mut last_end_of_line_excluding_eol_marker: usize = 0;
-
-    // Position one byte past the end of last line in the output buffer
     // including the last end of line marker.
     let mut last_end_of_line_including_eol_marker: usize = 0;
 
@@ -259,7 +255,7 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
                 // Skip the extra byte.
                 i += 1;
             } else {
-                new_line_marker = NewLineMarker::MacOs;
+                new_line_marker = NewLineMarker::Mac;
             }
 
             // Remove trailing whitespace
@@ -285,8 +281,11 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
                 //  Remove empty leading line.
                 number_of_empty_leading_lines_removed += 1;
             } else {
+                // Position one byte past the end of last line in the output buffer
+                // excluding the last end of line marker.
+                let last_end_of_line_excluding_eol_marker: usize = writer.position();
+
                 // Add new line marker
-                last_end_of_line_excluding_eol_marker = writer.position();
                 if options.normalize_new_line_markers && output_new_line_marker != new_line_marker {
                     changes.push(Change::new(
                         line_number,
@@ -378,7 +377,6 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         && last_end_of_non_empty_line_including_eol_marker < writer.position()
     {
         line_number = last_non_empty_line_number + 1;
-        last_end_of_line_excluding_eol_marker = last_end_of_non_empty_line_excluding_eol_marker;
         last_end_of_line_including_eol_marker = last_end_of_non_empty_line_including_eol_marker;
         changes.push(Change::new(
             line_number,
@@ -391,7 +389,6 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     if options.add_new_line_marker_at_end_of_file
         && last_end_of_line_including_eol_marker < writer.position()
     {
-        last_end_of_line_excluding_eol_marker = writer.position();
         changes.push(Change::new(
             line_number,
             ChangeType::NewLineMarkerAddedToEndOfFile,
@@ -401,17 +398,17 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
         line_number += 1;
     }
 
-    // Remove new line marker from the end of the file
+    // Remove new line marker(s) from the end of the file
     if options.remove_new_line_marker_from_end_of_file
         && last_end_of_line_including_eol_marker == writer.position()
         && line_number >= 2
     {
-        line_number -= 1;
+        line_number = last_non_empty_line_number;
         changes.push(Change::new(
             line_number,
             ChangeType::NewLineMarkerRemovedFromEndOfFile,
         ));
-        writer.rewind(last_end_of_line_excluding_eol_marker);
+        writer.rewind(last_end_of_non_empty_line_excluding_eol_marker);
     }
 
     changes
@@ -524,15 +521,15 @@ mod tests {
     }
 
     #[test]
-    fn test_is_file_whitespace() {
-        assert_eq!(is_file_whitespace(&[]), true);
-        assert_eq!(is_file_whitespace(b"    "), true);
-        assert_eq!(is_file_whitespace(b"\n\n\n"), true);
-        assert_eq!(is_file_whitespace(b"\r\r\r"), true);
-        assert_eq!(is_file_whitespace(b" \t\n\r"), true);
-        assert_eq!(is_file_whitespace(b"hello"), false);
-        assert_eq!(is_file_whitespace(b"hello world\n"), false);
-        assert_eq!(is_file_whitespace(b"\n\t \x0B \x0C \n  "), true);
+    fn test_is_whitespace_only() {
+        assert_eq!(is_whitespace_only(&[]), true);
+        assert_eq!(is_whitespace_only(b"    "), true);
+        assert_eq!(is_whitespace_only(b"\n\n\n"), true);
+        assert_eq!(is_whitespace_only(b"\r\r\r"), true);
+        assert_eq!(is_whitespace_only(b" \t\n\r"), true);
+        assert_eq!(is_whitespace_only(b"hello"), false);
+        assert_eq!(is_whitespace_only(b"hello world\n"), false);
+        assert_eq!(is_whitespace_only(b"\n\t \x0B \x0C \n  "), true);
     }
 
     #[test]
@@ -542,10 +539,7 @@ mod tests {
             find_most_common_new_line_marker(b"\n"),
             NewLineMarker::Linux
         );
-        assert_eq!(
-            find_most_common_new_line_marker(b"\r"),
-            NewLineMarker::MacOs
-        );
+        assert_eq!(find_most_common_new_line_marker(b"\r"), NewLineMarker::Mac);
         assert_eq!(
             find_most_common_new_line_marker(b"\r\n"),
             NewLineMarker::Windows
@@ -560,7 +554,7 @@ mod tests {
         );
         assert_eq!(
             find_most_common_new_line_marker(b"a\rb\rc\r\n"),
-            NewLineMarker::MacOs
+            NewLineMarker::Mac
         );
         assert_eq!(
             find_most_common_new_line_marker(b"a\r\nb\r\nc\n"),
@@ -576,7 +570,7 @@ mod tests {
         );
         assert_eq!(
             find_most_common_new_line_marker(b"\n\r\r\r\n"),
-            NewLineMarker::MacOs,
+            NewLineMarker::Mac,
         );
     }
 
@@ -634,10 +628,10 @@ mod tests {
     }
 
     #[test]
-    fn test_modify_content_add_new_line_marker_macos() {
+    fn test_modify_content_add_new_line_marker_mac() {
         let options: Options = Options::new()
             .add_new_line_marker_at_end_of_file()
-            .new_line_marker(OutputNewLineMarkerMode::MacOs);
+            .new_line_marker(OutputNewLineMarkerMode::Mac);
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  ", &options, &mut output);
         assert_eq!(output, b"hello\r\n\rworld  \r");
@@ -662,7 +656,7 @@ mod tests {
     }
 
     #[test]
-    fn test_modify_content_remove_new_line_marker_from_end_of_file() {
+    fn test_modify_content_remove_new_line_marker_from_end_of_file_1() {
         let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  \n", &options, &mut output);
@@ -677,6 +671,39 @@ mod tests {
     }
 
     #[test]
+    fn test_modify_content_remove_new_line_marker_from_end_of_file_2() {
+        let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello", &options, &mut output);
+        assert_eq!(output, b"hello");
+        assert_eq!(changes, vec![]);
+    }
+
+    #[test]
+    fn test_modify_content_remove_new_line_marker_from_end_of_file_3() {
+        let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
+        let mut output = Vec::new();
+        let changes = modify_content(b"", &options, &mut output);
+        assert_eq!(output, b"");
+        assert_eq!(changes, vec![]);
+    }
+
+    #[test]
+    fn test_modify_content_remove_new_line_marker_from_end_of_file_4() {
+        let options: Options = Options::new().remove_new_line_marker_from_end_of_file();
+        let mut output = Vec::new();
+        let changes = modify_content(b"hello  \n\r\n\r", &options, &mut output);
+        assert_eq!(output, b"hello  ");
+        assert_eq!(
+            changes,
+            vec![Change::new(
+                1,
+                ChangeType::NewLineMarkerRemovedFromEndOfFile
+            ),]
+        );
+    }
+
+    #[test]
     fn test_modify_content_normalize_new_line_markers_auto() {
         let options: Options = Options::new().normalize_new_line_markers();
         let mut output = Vec::new();
@@ -686,7 +713,7 @@ mod tests {
             changes,
             vec![Change::new(
                 2,
-                ChangeType::ReplacedNewLineMarker(NewLineMarker::MacOs, NewLineMarker::Windows)
+                ChangeType::ReplacedNewLineMarker(NewLineMarker::Mac, NewLineMarker::Windows)
             )]
         );
     }
@@ -708,7 +735,7 @@ mod tests {
                 ),
                 Change::new(
                     2,
-                    ChangeType::ReplacedNewLineMarker(NewLineMarker::MacOs, NewLineMarker::Linux)
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Mac, NewLineMarker::Linux)
                 ),
                 Change::new(
                     3,
@@ -719,10 +746,10 @@ mod tests {
     }
 
     #[test]
-    fn test_modify_content_normalize_new_line_markers_macos() {
+    fn test_modify_content_normalize_new_line_markers_mac() {
         let options: Options = Options::new()
             .normalize_new_line_markers()
-            .new_line_marker(OutputNewLineMarkerMode::MacOs);
+            .new_line_marker(OutputNewLineMarkerMode::Mac);
         let mut output = Vec::new();
         let changes = modify_content(b"hello\r\n\rworld  \r\n", &options, &mut output);
         assert_eq!(output, b"hello\r\rworld  \r");
@@ -731,11 +758,11 @@ mod tests {
             vec![
                 Change::new(
                     1,
-                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::MacOs)
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::Mac)
                 ),
                 Change::new(
                     3,
-                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::MacOs)
+                    ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::Mac)
                 ),
             ]
         );
@@ -753,7 +780,7 @@ mod tests {
             changes,
             vec![Change::new(
                 2,
-                ChangeType::ReplacedNewLineMarker(NewLineMarker::MacOs, NewLineMarker::Windows)
+                ChangeType::ReplacedNewLineMarker(NewLineMarker::Mac, NewLineMarker::Windows)
             )]
         );
     }

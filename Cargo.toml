@@ -1,6 +1,6 @@
 [package]
 name = "whitespace-format"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 authors = ["David Pal <davidko.pal@gmail.com>"]
 license = "MIT"

@@ -34,7 +34,7 @@ pub enum OutputNewLineMarkerMode {
     Linux,
 
     #[clap(help = "MacOS new line marker '\\r'.")]
-    MacOs,
+    Mac,
 
     #[clap(help = "Windows/DOS new line marker '\\r\\n'.")]
     Windows,
