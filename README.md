@@ -2,25 +2,27 @@
 
 [![Build, lint and test](https://github.com/DavidPal/whitespace-format-rust/actions/workflows/build.yaml/badge.svg)](https://github.com/DavidPal/whitespace-format-rust/actions/workflows/build.yaml)
 
-Whitespace formatter and linter for text files and source code files.
+Linter and formatter of whitespace in source code files and text files.
 
-The purpose of this tool is to normalize source code files (e.g. Python, Java,
-C/C++, Rust, Ruby, Go, JavaScript, etc.) and text files (HTML, JSON, YAML, CSV,
-MarkDown, LaTeX) before they are checked into a version control system.
+The purpose of this tool is to normalize whitespace in source code files (e.g.,
+Python, Java, C/C++, JavaScript, Rust, Go, Ruby, SQL) and text files (HTML,
+CSS, JSON, YAML, CSV, TSV MarkDown, LaTeX) before checking them into a version
+control system.
 
 The features include:
 
-* Auto-detection of new line markers (Linux `\n`, Windows `\r\n`, Mac `\r`).
-* Add a new line marker at the end of the file if it is missing.
-* Make new line markers consistent.
-* Remove empty lines at the end of the file.
 * Remove whitespace at the end of each line.
+* Remove empty lines at the end of the file.
+* Remove empty lines at the beginning of the file.
+* Add a new line marker at the end of the file if it is missing.
+* Auto-detection of new line markers (Linux `\n`, Windows `\r\n`, Mac `\r`).
+* Make new line markers consistent.
 * Replace tabs with spaces.
 * Remove/replace non-standard whitespace characters.
 
 The formatting changes are
 [idempotent](https://en.wikipedia.org/wiki/Idempotence), i.e., running the tool
-second time (with the same parameters) has no effect.
+a second time (with the same parameters) has no effect.
 
 Currently, the tool assumes that the files are encoded in either
 [UTF-8](https://en.wikipedia.org/wiki/UTF-8),
@@ -69,7 +71,7 @@ The command above formats `foo.txt` and all files contained in `my_project/`
 directory and its subdirectories. Files that contain `.git/` or `.idea/` in
 their (relative) path are excluded. For example, files in `my_project/.git/`
 and files in `my_project/.idea/` are excluded. Likewise, files ending with
-`*.pyc` are excluded.
+`.pyc` are excluded.
 
 If you want to know only if any changes **would be** made, add `--check-only`
 option:
@@ -106,6 +108,7 @@ of the files would be formatted.
 * `--normalize-new-line-markers` -- Make new line markers consistent in each file
   by replacing `\r\n`, `\n`, and `\r` with a consistent new line marker.
 * `--remove-trailing-whitespace` -- Remove whitespace at the end of each line.
+* `--remove-leading-empty-lines` --  Remove empty lines at the beginning of each file.
 * `--remove-trailing-empty-lines` -- Remove empty lines at the end of each file.
 * `--new-line-marker=MARKER` -- This option specifies what new line marker to use.
   `MARKER` must be one of the following:
@@ -127,12 +130,13 @@ whitespace-format \
     --add-new-line-marker-at-end-of-file \
     --normalize-new-line-markers \
     --remove-trailing-whitespace \
+    --remove-leading-empty-lines \
     --remove-trailing-empty-lines \
     foo.txt  my_project/
 ```
-This should work well for common programming languages (e.g. Python, Java,
-C/C++, Rust, Ruby, Go, JavaScript, etc.) and common text file formats (HTML,
-JSON, YAML, CSV, MarkDown, LaTeX).
+This combination should work well for common programming languages (e.g.,
+Python, Java, C/C++, JavaScript, Rust, Go, Ruby, SQL) and common text file
+formats (e.g., HTML, CSS, CSV, TSV, JSON, YAML, MarkDown, Makefile, LaTeX).
 
 ### Empty files
 
@@ -161,22 +165,47 @@ whitespace-format \
     --normalize-empty-files=empty \
     --normalize-whitespace-only-files=empty
 ```
+This combination should work well for common programming languages (e.g.,
+Python, Java, C/C++, JavaScript, Rust, Go, Ruby, SQL) and common text file
+formats (e.g., HTML, CSS, CSV, TSV, JSON, YAML, MarkDown, Makefile, LaTeX).
 
 ### Special characters
 
-Additional options are available for handling tab (`\t`), vertical tab (`\v`),
-and form feed (`f`) characters:
+* `--replace-tabs-with-spaces=N` -- Remove tabs or replace them with spaces.
+  The value `N` specifies the number of spaces to use. If `N` is positive
+  each tab character is replaced by `N` spaces. If `N` is zero, tabs are removed.
+  If `N` is negative, tabs are left unchanged. Default value is `-1`.
 
-* `--replace-tabs-with-spaces=N` -- Replace tabs with spaces.
-  The value `N` is the number of spaces used to replace each tab character.
-  If `N` is zero, tab characters are removed. If `N` is negative, tabs are not
-  replaced. Default value is `-1`, i.e., tabs are not replaced.
+* `--normalize-non-standard-whitespace=MODE` -- Replace or remove non-standard
+  whitespace characters (`\v` and `\f`). `MODE` must be one of the following:
+  * `ignore` -- Leave `\v` and `\f` as is. This is the default option.
+  * `replace` -- Replace any occurrence of `\v` or `\f` with a single space.
+  * `remove` -- Remove all occurrences of `\v` and `\f`
 
-* `--normalize-non-standard-whitespace=MODE` -- Replace or remove
-  non-standard whitespace characters (`\v` and `\f`). `MODE` must be one of the following:
-    * `ignore` -- Leave `\v` and `\f` as is. This is the default option.
-    * `replace` -- Replace any occurrence of `\v` or `\f` with a single space.
-    * `remove` -- Remove all occurrences of `\v` and `\f`.
+It is recommended to avoid tabs in source code and text files if possible, and
+replace them with spaces or other strings, such as `\t` or `&Tab;`. While both
+tabs and spaces are functionally similar for indentation in text files, using
+spaces offers consistency in how the indentation appears across different
+editors and platforms, as a space character always renders as a single space.
+Tabs, on the other hand, can be configured to represent a varying number of
+spaces in different editors, potentially leading to inconsistent visual
+formatting if not everyone working on the code uses the same tab settings.
+
+If `--check-only` is used, a combination of non-default options is recommended
+(e.g. `--replace-tabs-with-spaces=0` and
+`--normalize-non-standard-whitespace=remove`). This will warn about presence of
+tabs and non-standard whitespace characters. However, Makefiles and TSV files
+must be explicitly excluded using the `--exclude` option.
+
+However, without `--check-only`, there is no simple universal recommendation
+for all text files. First, in Makefiles and TSV files, tabs are required.
+Second, even in programming languages and text data formats where tabs can be
+avoided (e.g.  Python, Java, C/C++), their replacement depends on the context.
+For example, in Python, Java and C/C++, tabs in string literals can be replaced
+by the string `\t`. However, tabs outside of string literals cannot be replaced
+by the string `\t` and instead spaces must be used. While it is possible to
+replace tabs by spaces in string literals, this changes the semantics of the
+program.
 
 ## License
 
