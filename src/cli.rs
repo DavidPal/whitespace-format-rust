@@ -40,17 +40,17 @@ pub enum OutputNewLineMarkerMode {
     Windows,
 }
 
-/// Mode for dealing with `\v` and `\f` characters.
+/// Mode for dealing with '\v' and '\f' characters.
 #[derive(clap::ValueEnum, Clone, PartialEq, Debug, Default)]
 pub enum NonStandardWhitespaceReplacementMode {
     #[default]
     #[clap(help = "Leave '\\v' and '\\f' as is.")]
     Ignore,
 
-    #[clap(help = "Replace any occurrence of `\\v` or `\\f` with a single space.")]
+    #[clap(help = "Replace any occurrence of '\\v' or '\\f' with a single space.")]
     ReplaceWithSpace,
 
-    #[clap(help = "Remove all occurrences of `\\v' and '\\f'.")]
+    #[clap(help = "Remove all occurrences of '\\v' and '\\f'.")]
     Remove,
 }
 
@@ -133,8 +133,8 @@ pub struct CommandLineArguments {
         default_value_t = false,
         conflicts_with = "add_new_line_marker_at_end_of_file",
         help = "Remove all new line marker(s) from the end of each file. \
-        This option conflicts with `--add-new-line-marker-at-end-of-file`. \
-        This option implies `--remove-trailing-empty-lines` option, i.e., \
+        This option conflicts with --add-new-line-marker-at-end-of-file. \
+        This option implies --remove-trailing-empty-lines option, i.e., \
         all empty lines at the end of the file are removed."
     )]
     pub remove_new_line_marker_from_end_of_file: bool,
@@ -180,8 +180,8 @@ pub struct CommandLineArguments {
     value_enum,
     default_value_t = TrivialFileReplacementMode::Ignore,
     help = "Replace files consisting of whitespace only. \
-    The combination `--normalize-whitespace-only-files=empty` and \
-    `--normalize-empty-files=one-line` is not allowed, since it would lead to \
+    The combination --normalize-whitespace-only-files=empty and \
+    --normalize-empty-files=one-line is not allowed, since it would lead to \
     behavior that is not idempotent.")]
     pub normalize_whitespace_only_files: TrivialFileReplacementMode,
 
