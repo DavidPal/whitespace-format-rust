@@ -13,9 +13,9 @@ categories = ["command-line-utilities"]
 include = ["src/", "README.md", "LICENSE"]
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive"] }
-colored = { version = "2.1.0" }
-regex = { version = "1.11.1" }
+clap = { version = "4.5.51", features = ["derive"] }
+colored = { version = "3.0.0" }
+regex = { version = "1.12.2" }
 
 [package.metadata.deb]
 maintainer = "David Pal <davidko.pal@gmail.com>"
