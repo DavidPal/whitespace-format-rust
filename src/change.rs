@@ -32,87 +32,132 @@ pub enum ChangeType {
     ReplacedWhiteSpaceOnlyFileWithOneLine,
 
     /// A tab character was replaces by space character(s).
-    ReplacedTabWithSpaces,
+    ReplacedTabWithSpaces(isize),
 
     /// A tab character was removed.
     RemovedTab,
 
-    /// A non-standard whitespace character (`\f` or `\v`) was replaced by a space character.
+    /// A non-standard whitespace character ('\f' or '\v') was replaced by a space character.
     ReplacedNonstandardWhitespaceBySpace(u8),
 
-    /// A non-standard whitespace character (`\f` or `\v`) was removed.
+    /// A non-standard whitespace character ('\f' or '\v') was removed.
     RemovedNonstandardWhitespace(u8),
 }
 
 impl ChangeType {
     /// Human-readable representation of the change.
     pub fn to_string(&self, check_only: bool) -> String {
-        let check_only_word = if check_only { " would be " } else { " " };
         match self {
             ChangeType::NewLineMarkerAddedToEndOfFile => {
-                format!(
-                    "New line marker{}added to the end of the file.",
-                    check_only_word
-                )
+                if check_only {
+                    "New line marker needs to be added at the end of the file.".to_string()
+                } else {
+                    "New line marker was added at the end of the file.".to_string()
+                }
             }
             ChangeType::NewLineMarkerRemovedFromEndOfFile => {
-                format!(
-                    "New line marker{}removed from the end of the file.",
-                    check_only_word
-                )
+                if check_only {
+                    "New line marker needs to be removed from the end of the file.".to_string()
+                } else {
+                    "New line marker was removed from the end of the file.".to_string()
+                }
             }
             ChangeType::ReplacedNewLineMarker(old, new) => {
-                format!(
-                    "New line marker '{}'{}replaced by '{}'.",
-                    old, check_only_word, new
-                )
+                if check_only {
+                    format!(
+                        "New line marker '{}' needs to be replaced by '{}'.",
+                        old, new
+                    )
+                } else {
+                    format!("New line marker '{}' was replaced by '{}'.", old, new)
+                }
             }
             ChangeType::RemovedTrailingWhitespace => {
-                format!("Trailing whitespace{}removed.", check_only_word)
+                if check_only {
+                    "Trailing whitespace needs to be removed.".to_string()
+                } else {
+                    "Trailing whitespace was removed.".to_string()
+                }
             }
             ChangeType::RemovedLeadingEmptyLines => {
-                format!(
-                    "Empty line at the beginning of the file{}removed.",
-                    check_only_word
-                )
+                if check_only {
+                    "Empty lines at the beginning of the file need to be removed.".to_string()
+                } else {
+                    "Empty lines at the beginning of the file were removed.".to_string()
+                }
             }
             ChangeType::RemovedTrailingEmptyLines => {
-                format!(
-                    "Empty line(s) at the end of the file{}removed.",
-                    check_only_word
-                )
+                if check_only {
+                    "Empty lines at the end of the file need to be removed.".to_string()
+                } else {
+                    "Empty lines at the end of the file were removed.".to_string()
+                }
             }
             ChangeType::ReplacedEmptyFileWithOneLine => {
-                format!(
-                    "Empty file{}replaced with a single empty line.",
-                    check_only_word
-                )
+                if check_only {
+                    "Empty file needs to be replaced by single empty line.".to_string()
+                } else {
+                    "Empty file was replaced by a single empty line.".to_string()
+                }
             }
             ChangeType::ReplacedWhiteSpaceOnlyFileWithEmptyFile => {
-                format!("File{}replaced with an empty file.", check_only_word)
+                if check_only {
+                    "File consisting of only whitespace needs to be replaced by an empty file."
+                        .to_string()
+                } else {
+                    "File consisting of only whitespace was replaced by an empty file.".to_string()
+                }
             }
             ChangeType::ReplacedWhiteSpaceOnlyFileWithOneLine => {
-                format!("File{}replaced with a single empty line.", check_only_word)
+                if check_only {
+                    "File consisting of only whitespace needs to be replaced by a single empty line.".to_string()
+                } else {
+                    "File consisting of only whitespace was replaced by a single empty line."
+                        .to_string()
+                }
             }
-            ChangeType::ReplacedTabWithSpaces => {
-                format!("Tab{}replaced with spaces.", check_only_word)
+            ChangeType::ReplacedTabWithSpaces(number_of_spaces) => {
+                if check_only {
+                    "Tab character needs to be replaced by spaces or removed.".to_string()
+                } else {
+                    format!(
+                        "Tab character was replaced with {} spaces.",
+                        number_of_spaces
+                    )
+                }
             }
             ChangeType::RemovedTab => {
-                format!("Tab{}removed.", check_only_word)
+                if check_only {
+                    "Tab character needs to be replaced by spaces or removed.".to_string()
+                } else {
+                    "Tab character was removed.".to_string()
+                }
             }
             ChangeType::ReplacedNonstandardWhitespaceBySpace(char) => {
-                format!(
-                    "Non-standard whitespace character '{}'{}replaced by a space.",
-                    char_to_str(*char),
-                    check_only_word
-                )
+                if check_only {
+                    format!(
+                        "Non-standard whitespace character '{}' needs to be replaced by a space.",
+                        char_to_str(*char)
+                    )
+                } else {
+                    format!(
+                        "Non-standard whitespace character '{}' was replaced by a space.",
+                        char_to_str(*char)
+                    )
+                }
             }
             ChangeType::RemovedNonstandardWhitespace(char) => {
-                format!(
-                    "Non-standard whitespace character '{}'{}removed.",
-                    char_to_str(*char),
-                    check_only_word
-                )
+                if check_only {
+                    format!(
+                        "Non-standard whitespace character '{}' needs to be removed.",
+                        char_to_str(*char)
+                    )
+                } else {
+                    format!(
+                        "Non-standard whitespace character '{}' was removed.",
+                        char_to_str(*char)
+                    )
+                }
             }
         }
     }
@@ -153,7 +198,11 @@ mod tests {
     fn test_change_to_string() {
         assert_eq!(
             Change::new(1, ChangeType::NewLineMarkerAddedToEndOfFile).to_string(false),
-            "line 1: New line marker added to the end of the file."
+            "line 1: New line marker was added at the end of the file."
+        );
+        assert_eq!(
+            Change::new(1, ChangeType::NewLineMarkerAddedToEndOfFile).to_string(true),
+            "line 1: New line marker needs to be added at the end of the file."
         );
 
         assert_eq!(
@@ -162,17 +211,42 @@ mod tests {
                 ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::Linux)
             )
             .to_string(false),
-            "line 2: New line marker '\\r\\n' replaced by '\\n'."
+            "line 2: New line marker '\\r\\n' was replaced by '\\n'."
+        );
+        assert_eq!(
+            Change::new(
+                2,
+                ChangeType::ReplacedNewLineMarker(NewLineMarker::Windows, NewLineMarker::Linux)
+            )
+            .to_string(true),
+            "line 2: New line marker '\\r\\n' needs to be replaced by '\\n'."
         );
 
         assert_eq!(
-            Change::new(3, ChangeType::ReplacedNonstandardWhitespaceBySpace(0x0B)).to_string(false),
-            "line 3: Non-standard whitespace character '\\v' replaced by a space."
+            Change::new(3, ChangeType::ReplacedTabWithSpaces(4)).to_string(false),
+            "line 3: Tab character was replaced with 4 spaces."
+        );
+        assert_eq!(
+            Change::new(3, ChangeType::ReplacedTabWithSpaces(4)).to_string(true),
+            "line 3: Tab character needs to be replaced by spaces or removed."
         );
 
         assert_eq!(
-            Change::new(4, ChangeType::RemovedNonstandardWhitespace(0x0C)).to_string(false),
-            "line 4: Non-standard whitespace character '\\f' removed."
+            Change::new(4, ChangeType::ReplacedNonstandardWhitespaceBySpace(0x0B)).to_string(false),
+            "line 4: Non-standard whitespace character '\\v' was replaced by a space."
+        );
+        assert_eq!(
+            Change::new(4, ChangeType::ReplacedNonstandardWhitespaceBySpace(0x0B)).to_string(true),
+            "line 4: Non-standard whitespace character '\\v' needs to be replaced by a space."
+        );
+
+        assert_eq!(
+            Change::new(5, ChangeType::RemovedNonstandardWhitespace(0x0C)).to_string(false),
+            "line 5: Non-standard whitespace character '\\f' was removed."
+        );
+        assert_eq!(
+            Change::new(5, ChangeType::RemovedNonstandardWhitespace(0x0C)).to_string(true),
+            "line 5: Non-standard whitespace character '\\f' needs to be removed."
         );
     }
 }

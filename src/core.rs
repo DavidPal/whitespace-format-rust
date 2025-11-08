@@ -317,7 +317,10 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
             if options.replace_tabs_with_spaces < 0 {
                 writer.write(input_data[i]);
             } else if options.replace_tabs_with_spaces > 0 {
-                changes.push(Change::new(line_number, ChangeType::ReplacedTabWithSpaces));
+                changes.push(Change::new(
+                    line_number,
+                    ChangeType::ReplacedTabWithSpaces(options.replace_tabs_with_spaces),
+                ));
                 for _ in 0..options.replace_tabs_with_spaces {
                     writer.write(SPACE);
                 }
@@ -1118,7 +1121,7 @@ mod tests {
         assert_eq!(output, b"   hello");
         assert_eq!(
             changes,
-            vec![Change::new(1, ChangeType::ReplacedTabWithSpaces)]
+            vec![Change::new(1, ChangeType::ReplacedTabWithSpaces(3))]
         );
     }
 
