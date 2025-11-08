@@ -73,8 +73,8 @@ their (relative) path are excluded. For example, files in `my_project/.git/`
 and files in `my_project/.idea/` are excluded. Likewise, files ending with
 `.pyc` are excluded.
 
-If you want to know only if any changes **would be** made, add `--check-only`
-option:
+If you want to know only if any files need to be formatted and what changes
+need to be made, add `--check-only` option:
 ```shell
 whitespace-format \
     --check-only \
@@ -83,17 +83,24 @@ whitespace-format \
     --normalize-new-line-markers \
     foo.txt  my_project/
 ```
-This command can be used as a validation step before checking the source files
-into a version control system. The command outputs a non-zero exit code if any
-of the files would be formatted.
+If any of the files needs to be formatted, the command exits with a non-zero
+exit code. The command prints list of any changes that need to be made to each
+file. The command can be used as a validation step before checking the source
+files into a version control system (e.g. as a pre-commit or a pre-submit
+check), or as a step in the test or in the build process.
 
 ### Options
 
-* `--check-only` -- Do not format files. Only report which files would be formatted.
-  Exit code is zero if input is formatted correctly. Exit code is non-zero if formatting is required.
+* `--check-only` -- Do not format files. Only report which files need to be
+  formatted and what changes need to be made to each file. If one or more files
+  need to be formatted, a non-zero exit code is returned.
 * `--follow-symlinks` -- Follow symbolic links when searching for files.
-* `--exclude=REGEX` -- Regular expression that specifies which files to exclude.
-  The regular expression is evaluated on the path of each file.
+* `--exclude=REGEX` -- Regular expression that specifies which files to
+  exclude. The regular expression is evaluated on the path of each file.
+  For example, `--exclude="(\.jpeg|\.png)$"` excludes files with `.jpeg` or `.png`
+  extension. As another example, `--exclude="^tmp/"` excludes all files in the
+  top-level `tmp/` directory and its subdirectories, however, files in `data/tmp/`
+  will not be excluded.
 * `--color=MODE` -- This options specifies color output:
     * `auto` -- Determine whether to enable color output automatically based on the terminal used.
     * `on` -- Turn on color output.
@@ -101,27 +108,32 @@ of the files would be formatted.
 
 ### Formatting options
 
-* `--add-new-line-marker-at-end-of-file` -- Add a new line marker at the end of the file if it is missing.
-* `--remove-new-line-marker-from-end-of-file` -- Remove all new line marker(s) from the end of each file.
-  This option conflicts with `--add-new-line-marker-at-end-of-file`.
-  This option implies `--remove-trailing-empty-lines` option, i.e., all empty lines at the end of the file are removed.
-* `--normalize-new-line-markers` -- Make new line markers consistent in each file
-  by replacing `\r\n`, `\n`, and `\r` with a consistent new line marker.
+* `--new-line-marker=MARKER` -- Specifies what new line marker to use in the
+  formatted output file. `MARKER` must be one of the following:
+  * `auto` -- Use new line marker that is the most common in each individual file.
+    If no new line marker is present in the file, Linux `\n` is used.
+    This is the default option.
+  * `linux` -- Use Linux new line marker `\n`.
+  * `mac` -- Use Mac new line marker `\r`.
+  * `windows` -- Use Windows new line marker `\r\n`.
+* `--normalize-new-line-markers` -- Make new line markers consistent in each
+  file by replacing `\r\n`, `\n`, and `\r` with a consistent new line marker. The
+  new line marker in the output is specified by `--new-line-marker` option. This
+  option works even if the input contains an arbitrary mix of new line markers
+  `\r\n`, `\n`, `\r` even within the same input file.
+* `--add-new-line-marker-at-end-of-file` -- Add new line marker at the end of
+  each file if it is missing.
+* `--remove-new-line-marker-from-end-of-file` -- Remove all new line marker(s)
+  from the end of each file. This option cannot be used in combination with
+  `--add-new-line-marker-at-end-of-file`. Due to idempotence, all empty lines at
+  the end of the file are removed.  In other words, this option implies
+  `--remove-trailing-empty-lines` option.
 * `--remove-trailing-whitespace` -- Remove whitespace at the end of each line.
-* `--remove-leading-empty-lines` --  Remove empty lines at the beginning of each file.
-* `--remove-trailing-empty-lines` -- Remove empty lines at the end of each file.
-* `--new-line-marker=MARKER` -- This option specifies what new line marker to use.
-  `MARKER` must be one of the following:
-    * `auto` -- Use new line marker that is the most common in each individual file.
-      If no new line marker is present in the file, Linux `\n` is used.
-      This is the default option.
-    * `linux` -- Linux new line marker `\n`.
-    * `mac` -- Mac new line marker `\r`.
-    * `windows` -- Windows new line marker `\r\n`.
-
-Note that input files can contain an arbitrary mix of new line markers `\n`,
-`\r`, `\r\n` even within the same file. The option `--new-line-marker`
-specifies the character that will be written in the formatted file.
+* `--remove-leading-empty-lines` -- Remove empty lines at the beginning of each
+  file.
+* `--remove-trailing-empty-lines` -- Remove empty lines at the end of each
+  file. If `--remove-new-line-marker-from-end-of-file` is used, this option is
+  used automatically.
 
 An opinionated combination of options is:
 ```shell
@@ -140,19 +152,25 @@ formats (e.g., HTML, CSS, CSV, TSV, JSON, YAML, MarkDown, Makefile, LaTeX).
 
 ### Empty files
 
-There are separate options for handling empty files and files consisting of
-whitespace characters only:
+The options above do not format empty files and files consisting of only
+whitespace. There are separate options for handling such files:
 
-* `--normalize-empty-files=MODE` -- Replace files of zero length.
-* `--normalize-whitespace-only-files=MODE` -- Replace files consisting of whitespace only.
+* `--normalize-empty-files=MODE`
+* `--normalize-whitespace-only-files=MODE`
 
-The value `MODE` is one of the following:
+where `MODE` is one of the following:
 
-* `ignore` -- Leave the file as is. This is the default option.
+* `ignore` -- Leave the file unchanged. This is the default option.
 * `empty` -- Replace the file with an empty file.
-* `one-line` -- Replace the file with a file consisting of a single new line marker.
+* `one-line` -- Replace the file with a file consisting of a single new line
+  marker.
 
-Note that `--normalize-empty-files=ignore` and `--normalize-empty-files=empty` are equivalent.
+Depending on the mode, an empty file or a whitespace-only file will be either
+ignored, replaced by a zero-byte file, or replaced by a file consisting of the
+single new line marker.
+
+Note that `--normalize-empty-files=ignore` and `--normalize-empty-files=empty`
+are equivalent.
 
 The combination `--normalize-whitespace-only-files=empty` and
 `--normalize-empty-files=one-line` is not allowed, since it would lead to
