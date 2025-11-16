@@ -417,8 +417,8 @@ fn modify_content<T: Writer>(input_data: &[u8], options: &Options, writer: &mut 
     changes
 }
 
-/// Formats or checks a single file and returns the list of changes tha have been
-/// made or would have been made. If check_only is set to true, the file is not modified.
+/// Formats or checks a single file and returns the list of changes that have been
+/// made or need to be made. If check_only is set to true, the file is not modified.
 /// Otherwise, the file is overwritten in place.
 pub fn process_file(file_path: &PathBuf, options: &Options, check_only: bool) -> Vec<Change> {
     match fs::read(file_path) {

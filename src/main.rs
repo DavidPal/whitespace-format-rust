@@ -17,15 +17,6 @@ use colored::Colorize;
 use std::path::Path;
 use std::process;
 
-/// Returns "1 file" or "N files" if N > 1.
-fn file_count(number_of_files: usize) -> String {
-    match number_of_files {
-        0 => String::new(),
-        1 => format!("{} file", number_of_files),
-        _ => format!("{} files", number_of_files),
-    }
-}
-
 /// Reports the number of changes and unchanged files.
 fn print_change_report_and_exit(
     number_of_changed_files: usize,
@@ -38,35 +29,34 @@ fn print_change_report_and_exit(
         println!("{}", "All done! ✨ 🍰 ✨".bold());
     }
 
-    let check_only_word = if check_only { " would be " } else { " " };
-
     if number_of_changed_files > 0 {
-        print!(
-            "{}{}{}",
-            file_count(number_of_changed_files).blue().bold(),
-            check_only_word.bold(),
-            "reformatted".bold(),
-        );
-    }
+        let message = match (check_only, number_of_changed_files) {
+            (true, 1) => "file needs to be formatted.",
+            (true, _) => "files need to be formatted.",
+            (false, 1) => "file was formatted.",
+            (false, _) => "files were formatted.",
+        };
 
-    if number_of_changed_files > 0 && number_of_unchanged_files > 0 {
-        print!("{}", ", ".bold());
+        println!(
+            "{} {}",
+            number_of_changed_files.to_string().blue().bold(),
+            message.bold(),
+        );
     }
 
     if number_of_unchanged_files > 0 {
+        let message = match (check_only, number_of_unchanged_files) {
+            (true, 1) => "file doesn't need to be formatted.",
+            (true, _) => "files don't need to be formatted.",
+            (false, 1) => "file was left unchanged.",
+            (false, _) => "files were left unchanged.",
+        };
+
         print!(
-            "{}{}{}",
-            file_count(number_of_unchanged_files).blue(),
-            check_only_word,
-            "left unchanged"
+            "{} {}",
+            number_of_unchanged_files.to_string().blue(),
+            message,
         );
-    }
-    if number_of_changed_files > 0 || number_of_unchanged_files > 0 {
-        if number_of_unchanged_files > 0 {
-            println!("{}", ".");
-        } else {
-            println!("{}", ".".bold());
-        }
     }
 
     if check_only && number_of_changed_files > 0 {
@@ -78,16 +68,16 @@ fn print_change_report_and_exit(
 
 /// Reports the formatting changes that was made or would be made to a file.
 fn print_changes(file_path: &Path, changes: Vec<Change>, check_only: bool) {
-    let check_only_word = if check_only {
-        "Would reformat"
+    let message = if check_only {
+        "needs to be formatted."
     } else {
-        "Reformatted"
+        "was formatted."
     };
     println!(
-        "{}{}{}",
-        check_only_word.red().bold(),
-        " file ".red().bold(),
-        file_path.display().to_string().bold()
+        "{} {} {}",
+        "File".red().bold(),
+        file_path.display().to_string().bold(),
+        message.red().bold(),
     );
     for change in changes {
         println!("  ↳ {}", change.to_string(check_only).blue());
@@ -179,20 +169,4 @@ fn main() {
         number_of_unchanged_files,
         command_line_arguments.check_only,
     );
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_file_count() {
-        assert_eq!(file_count(0), String::from(""));
-        assert_eq!(file_count(1), String::from("1 file"));
-        assert_eq!(file_count(2), String::from("2 files"));
-        assert_eq!(file_count(3), String::from("3 files"));
-        assert_eq!(file_count(4), String::from("4 files"));
-        assert_eq!(file_count(5), String::from("5 files"));
-        assert_eq!(file_count(6), String::from("6 files"));
-    }
 }
