@@ -26,7 +26,7 @@ pub enum OutputNewLineMarkerMode {
     #[default]
     #[clap(
         help = "Use new line marker that is the most common in each individual file. \
-        If no new line marker is present in the file, Linux '\\n' is used."
+                If no new line marker is present in the file, Linux '\\n' is used."
     )]
     Auto,
 
@@ -73,17 +73,18 @@ pub enum TrivialFileReplacementMode {
 #[derive(clap::Parser, Debug)]
 #[command(
     version,
-    about = "Whitespace formatter and linter for text files and source code files.",
-    long_about = "Whitespace formatter and linter for text files and source code files.",
+    about = "Linter and formatter of whitespace in source code files and text files",
+    long_about = "Linter and formatter of whitespace in source code files and text files",
     max_term_width = 100
 )]
 pub struct CommandLineArguments {
     #[arg(
         long,
         default_value_t = false,
-        help = "Do not format files. Only report which files need to be formatted and \
-        what changes need to be made to each file. If one or more files \
-        need to be formatted, a non-zero exit code is returned."
+        help = "Do not format files. Only report which files need to be formatted \
+                and what changes need to be made to each file. \
+                If one or more files need to be formatted, \
+                a non-zero exit code is returned."
     )]
     pub check_only: bool,
 
@@ -94,19 +95,19 @@ pub struct CommandLineArguments {
     )]
     pub follow_symlinks: bool,
 
-    #[arg(long,
-    default_value_t = String::from(UNMATCHABLE_REGEX),
-    help =
-        "Regular expression that specifies which files to exclude. \
-        The regular expression is evaluated on the path of each file. \
-        The default value is a regular expression that does not match anything.",
-    long_help =
-        "Regular expression that specifies which files to exclude. \
-        The regular expression is evaluated on the path of each file. \
-        For example, --exclude='(\\.jpeg|\\.png)$' excludes files \
-        with '.jpeg' or '.png' extension. As another example, \
-        --exclude='^tmp/' excludes all files in the 'tmp/' directory and \
-        its subdirectories, however, files in 'data/tmp/' will not be excluded.
+    #[arg(
+        long,
+        default_value_t = String::from(UNMATCHABLE_REGEX),
+        help = "Regular expression that specifies which files to exclude. \
+                The regular expression is evaluated on the path of each file. \
+                The default value is a regular expression that does not match anything.",
+        long_help = "Regular expression that specifies which files to exclude. \
+                     The regular expression is evaluated on the path of each file. \
+                     The default value is a regular expression that does not match anything. \
+                     For example, --exclude='(\\.jpeg|\\.png)$' excludes files \
+                     with '.jpeg' or '.png' extension. As another example, \
+                     --exclude='^tmp/' excludes all files in the 'tmp/' directory and \
+                     its subdirectories, however, files in 'data/tmp/' will not be excluded.
     ")]
     pub exclude: String,
 
@@ -118,9 +119,12 @@ pub struct CommandLineArguments {
     )]
     pub color: ColoredOutputMode,
 
-    #[arg(long, value_enum,
-    default_value_t = OutputNewLineMarkerMode::Auto,
-    help = "New line marker to use.")]
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = OutputNewLineMarkerMode::Auto,
+        help = "Specifies what new line marker to use in the formatted output file."
+    )]
     pub new_line_marker: OutputNewLineMarkerMode,
 
     #[arg(
@@ -135,16 +139,23 @@ pub struct CommandLineArguments {
         default_value_t = false,
         conflicts_with = "add_new_line_marker_at_end_of_file",
         help = "Remove all new line marker(s) from the end of each file. \
-        This option conflicts with --add-new-line-marker-at-end-of-file. \
-        This option implies --remove-trailing-empty-lines option, i.e., \
-        all empty lines at the end of the file are removed."
+                Due to idempotence, all empty lines at the end of the file are removed. \
+                In other words, --remove-new-line-marker-from-end-of-file implies \
+                --remove-trailing-empty-lines option. \
+                The option --remove-new-line-marker-from-end-of-file conflicts \
+                with --add-new-line-marker-at-end-of-file option."
     )]
     pub remove_new_line_marker_from_end_of_file: bool,
 
     #[arg(
         long,
         default_value_t = false,
-        help = "Make new line markers the same within each file."
+        help = "Make new line markers consistent in each file by replacing \
+                '\\r\\n', '\\n', and `\\r` with a consistent new line marker. \
+                The new line marker in the output is specified by \
+                --new-line-marker option. This option works even if the input \
+                contains an arbitrary mix of new line markers \
+                '\\r\\n', '\\n', '\\r' even within the same input file."
     )]
     pub normalize_new_line_markers: bool,
 
@@ -167,45 +178,61 @@ pub struct CommandLineArguments {
         default_value_t = false,
         default_value_if("remove_new_line_marker_from_end_of_file", "true", Some("true")),
         help = "Remove empty lines at the end of each file. \
-        If --remove-new-line-marker-from-end-of-file is used, this option is used automatically."
+                If --remove-new-line-marker-from-end-of-file is used, \
+                --remove-trailing-empty-lines is used as well; \
+                otherwise the behavior would not be idempotent."
     )]
     pub remove_trailing_empty_lines: bool,
 
-    #[arg(long,
-    value_enum,
-    default_value_t = TrivialFileReplacementMode::Ignore,
-    help = "Replace files of zero length.",
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = TrivialFileReplacementMode::Ignore,
+        help = "Replace files of zero length."
     )]
     pub normalize_empty_files: TrivialFileReplacementMode,
 
-    #[arg(long,
-    value_enum,
-    default_value_t = TrivialFileReplacementMode::Ignore,
-    help = "Replace files consisting of whitespace only. \
-    The combination --normalize-whitespace-only-files=empty and \
-    --normalize-empty-files=one-line is not allowed, since it would lead to \
-    behavior that is not idempotent.")]
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = TrivialFileReplacementMode::Ignore,
+        help = "Replace files consisting of whitespace only. \
+                The combination --normalize-whitespace-only-files=empty and \
+                --normalize-empty-files=one-line is not allowed, since it \
+                would lead to behavior that is not idempotent."
+    )]
     pub normalize_whitespace_only_files: TrivialFileReplacementMode,
 
-    #[arg(long,
-    value_enum,
-    default_value_t = NonStandardWhitespaceReplacementMode::Ignore,
-    help = "Replace or remove non-standard whitespace characters '\\v' and '\\f' in each file.")]
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = NonStandardWhitespaceReplacementMode::Ignore,
+        help = "Replace or remove non-standard whitespace characters \
+                '\\v' and '\\f' in each file."
+    )]
     pub normalize_non_standard_whitespace: NonStandardWhitespaceReplacementMode,
 
-    #[arg(long,
-    default_value_t = -1,
-    help = "Replace tabs with spaces. \
-    The parameter specifies the number of spaces used to replace each tab character. \
-    If the parameter is zero, tab characters are removed. \
-    If the parameter is negative, tabs are not replaced.")]
+    #[arg(
+        long,
+        default_value_t = -1,
+        help = "Remove tabs or replace them with spaces. \
+                The value of the parameter specifies the number of spaces to use. \
+                If the value is positive, tabs are replaced. \
+                If the parameter is zero, tabs are removed. \
+                If the parameter is negative, tabs are left unchanged."
+    )]
     pub replace_tabs_with_spaces: isize,
 
-    #[arg(num_args = 1..,
-    required = true,
-    value_delimiter = ' ',
-    help = "List of files and/or directories to process. \
-    Files in directories are discovered recursively.")]
+    #[arg(
+        num_args = 1..,
+        required = true,
+        value_delimiter = ' ',
+        help = "List of input files or directories. \
+                Directories are recursively searched for files. \
+                Files can be excluded with --exclude option. \
+                By default symbolic links are ignored. \
+                Use --follow-symlinks option to enable them."
+    )]
     pub paths: Vec<PathBuf>,
 }
 
