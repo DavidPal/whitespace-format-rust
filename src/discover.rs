@@ -1,5 +1,7 @@
 // Library imports
 use regex::Regex;
+use std::fs::DirEntry;
+use std::fs::ReadDir;
 use std::path::PathBuf;
 
 // Internal imports
@@ -8,45 +10,29 @@ use crate::error::Error;
 
 /// Lists all files in a collection of paths (directories or files).
 pub fn discover_files(paths: &[PathBuf], follow_symlinks: bool) -> Vec<PathBuf> {
-    let mut paths: Vec<PathBuf> = Vec::from(paths);
+    let mut stack: Vec<PathBuf> = Vec::from(paths);
     let mut files: Vec<PathBuf> = Vec::new();
 
-    loop {
-        let mut directories: Vec<PathBuf> = Vec::new();
+    while !stack.is_empty() {
+        let path = stack.pop().unwrap();
 
-        for path in paths.iter() {
-            if !path.exists() {
-                die(Error::FileNotFound(path.display().to_string()));
-            } else if path.is_symlink() && !follow_symlinks {
-                continue;
-            } else if path.is_file() {
-                files.push(path.clone());
-            } else if path.is_dir() {
-                directories.push(path.clone());
-            }
-        }
-
-        if directories.is_empty() {
-            break;
-        }
-
-        paths.clear();
-
-        for directory in directories.iter() {
-            if let Ok(inner_paths) = directory.read_dir() {
-                for inner_path in inner_paths {
-                    if let Ok(inner_path) = inner_path {
-                        paths.push(inner_path.path());
-                    } else {
-                        die(Error::FailedToReadDirectoryEntry(
-                            directory.display().to_string(),
-                        ));
-                    }
-                }
-            } else {
-                die(Error::FailedToReadDirectory(
-                    directory.display().to_string(),
-                ));
+        if !path.exists() {
+            die(Error::FileNotFound(path.display().to_string()));
+        } else if path.is_symlink() && !follow_symlinks {
+            continue;
+        } else if path.is_file() {
+            files.push(path.clone());
+        } else if path.is_dir() {
+            let inner_paths: ReadDir = path
+                .read_dir()
+                .unwrap_or_else(|_| die(Error::FailedToReadDirectory(path.display().to_string())));
+            for inner_path in inner_paths {
+                let inner_path: DirEntry = inner_path.unwrap_or_else(|_| {
+                    die(Error::FailedToReadDirectoryEntry(
+                        path.display().to_string(),
+                    ))
+                });
+                stack.push(inner_path.path());
             }
         }
     }

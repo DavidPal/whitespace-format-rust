@@ -13,7 +13,7 @@ categories = ["command-line-utilities"]
 include = ["src/", "README.md", "LICENSE"]
 
 [dependencies]
-clap = { version = "4.5.51", features = ["derive"] }
+clap = { version = "4.5.51", features = ["derive", "wrap_help"] }
 colored = { version = "3.0.0" }
 regex = { version = "1.12.2" }
 

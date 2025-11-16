@@ -74,7 +74,8 @@ pub enum TrivialFileReplacementMode {
 #[command(
     version,
     about = "Whitespace formatter and linter for text files and source code files.",
-    long_about = "Whitespace formatter and linter for text files and source code files."
+    long_about = "Whitespace formatter and linter for text files and source code files.",
+    max_term_width = 100
 )]
 pub struct CommandLineArguments {
     #[arg(
